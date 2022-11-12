@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SDL_WINDX_H
+#define SDL_WINDX_H
 #include <windows.h>
 #include <SDL/include/SDL.h>
 #include <SDL/include/SDL_image.h>
@@ -6,6 +7,7 @@
 
 using renderer = SDL_Renderer;
 namespace ns_sdl_winx {
+	using namespace std;
 	const unsigned frame_interval = 13;
 	const unsigned key_count = 32;
 
@@ -135,10 +137,16 @@ namespace ns_sdl_winx {
 			SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 		}
 
-		void Create(const int& w, const int& h) {
-			win_ = SDL_CreateWindow("winx",
-				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
-				SDL_WINDOW_SHOWN| SDL_WINDOW_BORDERLESS);
+		void Create(const int &w, const int &h, const void *wind = nullptr)	{
+			if (wind) {
+				win_ = SDL_CreateWindowFrom(wind);
+			} else {
+				win_ = SDL_CreateWindow(
+					"winx", SDL_WINDOWPOS_CENTERED,
+					SDL_WINDOWPOS_CENTERED, w, h,
+					SDL_WINDOW_SHOWN |
+						SDL_WINDOW_BORDERLESS);
+			}
 
 			render_ = SDL_CreateRenderer(win_, -1, 0);
 			SetOrigin(0, h);
@@ -192,94 +200,95 @@ namespace ns_sdl_winx {
 		int ox_, oy_;
 		unsigned dt_;
 	};
-
-	
-}
+	};
 
 namespace ns_sdl_img {
-	class Animation
+using namespace std;
+class Animation {
+	using seq = vector<tuple<string, SDL_Texture *, int>>;
+	using node = tuple<SDL_Texture *, int, int>;
+
+public:
+	Animation(renderer *r) : r_(r), tick_(0) {}
+	void Update(const unsigned &dt, const int &x, const int &y,
+		    const int &w, const int &h)
 	{
-		using seq = vector<tuple<string, SDL_Texture*, int>>;
-		using node = tuple<SDL_Texture*, int, int>;
-	public:
-		Animation(renderer* r) :
-			r_(r),
-			tick_(0) {}
-		void Update(const unsigned& dt, const int& x, const int& y, const int& w, const int& h)
-		{
-			tick_ += dt;
-			if (tick_ >= get<1>(curr_)) {
-				tick_ = 0;
-				curr_ = next_;
-				Next();
-			}
-			SDL_Rect rt = { x,y,w,h };
-			SDL_RenderCopy(r_, get<0>(curr_), NULL, &rt);
-		}
-
-		void LoadAsset() {
-			get<0>(first_) = get<1>(ts_[0]);
-			get<1>(first_) = get<2>(ts_[0]);
-			get<2>(first_) = 0;
-
-			curr_ = first_;
+		tick_ += dt;
+		if (tick_ >= get<1>(curr_)) {
+			tick_ = 0;
+			curr_ = next_;
 			Next();
 		}
-		seq ts_;
-	protected:
-		void Next() {
-			auto index = get<2>(curr_) + 1;
-			if (index >= ts_.size()) {
-				next_ = first_;
-			}
-			if (index < ts_.size()) {
-				get<0>(next_) = get<1>(ts_[index]);
-				get<1>(next_) = get<2>(ts_[index]);
-				get<2>(next_) = index;
-			}
-		}
-	private:
-		int tick_;
-		node first_;
-		node curr_;
-		node next_;
-		renderer* r_;
-	};
+		SDL_Rect rt = {x, y, w, h};
+		SDL_RenderCopy(r_, get<0>(curr_), NULL, &rt);
+	}
 
-	class AssetMgr :public single<AssetMgr>
+	void LoadAsset()
 	{
-	public:
-		void SetRenderer(renderer* r) {
-			r_ = r;
-		}
+		get<0>(first_) = get<1>(ts_[0]);
+		get<1>(first_) = get<2>(ts_[0]);
+		get<2>(first_) = 0;
 
-		renderer* GetRenderer() {
-			return r_;
-		}
-		SDL_Texture* GetTexture(const string& name)
-		{
-			auto it = textures_.find(name);
-			if (it != textures_.end()) {
-				return it->second;
-			}
-			return LoadTexture(name);
-		}
+		curr_ = first_;
+		Next();
+	}
+	seq ts_;
 
-		void ReleaseTexture()
-		{
-			for (auto& it : textures_) {
-				SDL_DestroyTexture(it.second);
-			}
+protected:
+	void Next()
+	{
+		auto index = get<2>(curr_) + 1;
+		if (index >= ts_.size()) {
+			next_ = first_;
 		}
-	protected:
-		SDL_Texture* LoadTexture(const string& name) {
-			auto t = IMG_LoadTexture(r_, name.c_str());
-			textures_.insert(make_pair(name, t));
-			return t;
+		if (index < ts_.size()) {
+			get<0>(next_) = get<1>(ts_[index]);
+			get<1>(next_) = get<2>(ts_[index]);
+			get<2>(next_) = index;
 		}
-	private:
-		renderer* r_;
-		map<string, SDL_Texture*> textures_;
-	};
-}
+	}
 
+private:
+	int tick_;
+	node first_;
+	node curr_;
+	node next_;
+	renderer *r_;
+};
+
+class AssetMgr : public single<AssetMgr> {
+public:
+	void SetRenderer(renderer *r) { r_ = r; }
+
+	renderer *GetRenderer() { return r_; }
+	SDL_Texture *GetTexture(const string &name)
+	{
+		auto it = textures_.find(name);
+		if (it != textures_.end()) {
+			return it->second;
+		}
+		return LoadTexture(name);
+	}
+
+	void ReleaseTexture()
+	{
+		for (auto &it : textures_) {
+			SDL_DestroyTexture(it.second);
+		}
+	}
+
+protected:
+	SDL_Texture *LoadTexture(const string &name)
+	{
+		auto t = IMG_LoadTexture(r_, name.c_str());
+		textures_.insert(make_pair(name, t));
+		return t;
+	}
+
+private:
+	renderer *r_;
+	map<string, SDL_Texture *> textures_;
+};
+};
+
+#endif

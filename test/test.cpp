@@ -7,10 +7,7 @@ using namespace placeholders;
 void main()
 {
 	auto wx = Game::Instance();
-	wx->WinInit();
 	wx->Create(500, 400);
-
-	wx->Init();
 
 	Scene scene;
 	Layer layer;
@@ -19,12 +16,50 @@ void main()
 	wx->AddSub(&scene);
 	scene.AddSub(&layer);
 	layer.AddSub(&actor);
+	scene.SetPostion(0, 0, false);
+	scene.SetSize(500, 400);
+	layer.SetPostion(0, 0, false);
+	layer.SetSize(300, 200);
 	actor.SetPostion(0, 0);
+	actor.SetSize(50, 40);
 
-	scene.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\scene.png", 0, 0);
-	layer.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
+	wx->MainCamera()->SetPostion(0, 0);
+
+	Camera camera(wx);
+	camera.SetViewport(500, 400);
+	layer.SetCamera(&camera);
+	layer.camera_->SetPostion(-100, -100);
+
+	ns_box2d::MainWorld::Instance()->SetDbgDraw(layer.camera_);
+
+	ns_box2d::MainWorld::Instance()->RelateWorld(&actor);
+
+	//scene.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\scene.png", 0, 0);
+	//layer.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
 	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
+	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
 	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
+	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);
+
+	Layer menu;
+	Actor button;
+	scene.AddSub(&menu);
+	menu.AddSub(&button);
+	menu.SetPostion(0, 0, false);
+	menu.SetSize(300, 200);
+	button.SetPostion(0, 0);
+	button.SetSize(50, 40);
+
+	ns_box2d::bx2World menu_world;
+	wx->AddWorld(&menu_world);
+	menu_world.SetDbgDraw(wx->MainCamera());
+	menu_world.RelateWorld(&button);
+
+	//menu.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
+	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
+	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
+	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
+	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);	
 
 	wx->LoadAsset();
 
@@ -40,9 +75,10 @@ void main()
 		bind([](Actor* actor) {actor->SetPostion(0, 0); }
 	, &actor));
 
-	actor.AddFrameEvent([]() {
+	actor.AddFrameEvent([](void* self) {
 		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_X)) {
-			print("key x down");
+			Actor *actor = (Actor *)self;
+			print(actor->x_, actor->y_);
 		}
 	});
 

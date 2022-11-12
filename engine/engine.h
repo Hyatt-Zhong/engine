@@ -1,16 +1,66 @@
+#ifndef ENGINE_H
+#define ENGINE_H
+
 #include "sdl_windx.h"
+#include "bx2-engine.h"
 
 namespace ns_engine {
+using namespace std;
+
 	enum AssetType {
 		Texture,
 		Sound,
 	};
-	using frame_event = function<void()>;
+
+	class Camera {
+	public:
+		Camera(ns_sdl_winx::windowx *win)
+			: win_(win), x_(0), y_(0), w_(0), h_(0){}
+		void SetPostion(const int &x, const int &y) {
+			x_ = x, y_ = y; 
+		}
+
+		void SetViewport(const int& w, const int& h) {
+			w_ = w, h_ = h;
+		}
+
+		void Move(const int &dx, const int &dy) {
+			x_ += dx, y_ += dy; 
+		}
+
+		template<typename T> 
+		bool Catch(T *tx, int &x, int &y){
+			auto ret = false;
+			auto x_dt = abs(tx->x_ - x_);
+			auto y_dt = abs(tx->y_ - y_);
+			if (x_dt < w_ && y_dt < h_) {
+				ret = true;
+			}
+			x = tx->x_, y = tx->y_;
+			x -= x_, y -= y_;
+			win_->Offset(x, y, tx->w_, tx->h_);
+			return ret;
+		}
+
+		void Trans(int& x, int& y) { 
+			win_->Offset(x, y, 0, 0);
+			x += x_, y += y_;
+		}
+
+	public:
+		ns_sdl_winx::windowx *win_;
+	protected:
+	private:
+		int x_, y_, w_, h_;
+	};
+
+	using frame_event = function<void(void*)>;
 	template<typename T, typename S>
 	class Temp
 	{
 	public:
-		Temp() :alive_(true), curr_anim_(nullptr) {}
+		Temp() : curr_anim_(nullptr)
+			, x_(0), y_(0), w_(0), h_(0) {}
 		~Temp() {}
 		virtual void Init() {}
 		virtual void LoadAsset() {
@@ -24,15 +74,16 @@ namespace ns_engine {
 		virtual void Update(const unsigned& dt) {
 			FrameEvent();
 			ChangeState();
+
 			if (curr_anim_) {
-				auto [x, y, w, h] = SDL_Rect({ x_,y_,w_,h_ });
-				winx_->Offset(x, y, w, h);
-				//print(x, y, w, h);
-				curr_anim_->Update(dt, x, y, w, h);
+				int x, y;
+				if (camera_->Catch(this, x, y)) {
+					curr_anim_->Update(dt, x, y, w_, h_);
+				}
 			}
 			Sort();
 			for (auto& it : sub_) {
-				if (it->alive_) {
+				if (it->IsAlive()) {
 					it->Update(dt);
 				}
 			}
@@ -48,9 +99,16 @@ namespace ns_engine {
 
 		void AddSub(S* sub) {
 			sub->SetParent((S::Parent*)this);
-			sub->winx_ = winx_;
+			sub->camera_ = camera_;
 			sub_.push_back(sub);
 		}
+		void SetCamera(Camera *camera) { 
+			camera_ = camera;
+			for (auto &it : sub_) {
+				it->SetCamera(camera_);
+			}
+		}
+
 
 		void Sort() {
 			auto& ret = sub_;
@@ -76,7 +134,7 @@ namespace ns_engine {
 
 		void SetPostionByMouse(const int& x, const int& y, bool center = true) {
 			x_ = x, y_ = y;
-			winx_->Offset(x_, y_, 0, 0);
+			camera_->Trans(x_, y_);
 			if (center) {
 				x_ = x_ - w_ / 2, y_ = y_ - h_ / 2;//x,y 为对象的中点
 			}
@@ -96,15 +154,16 @@ namespace ns_engine {
 
 		void FrameEvent() {
 			for (auto& it:frame_events_){
-				it();
+				it(this);
 			}
 		}
 		void AddFrameEvent(const frame_event &fe){
 			frame_events_.push_back(fe);
 		}
 
+		virtual bool IsAlive() { return true; }
+
 		vector<S*> sub_;
-		bool alive_;
 		int zorder_;
 
 		int x_, y_;
@@ -113,7 +172,7 @@ namespace ns_engine {
 
 		map<int, ns_sdl_img::Animation> anims_;
 		ns_sdl_img::Animation* curr_anim_;
-		ns_sdl_winx::windowx* winx_;
+		Camera* camera_;
 		vector<frame_event> frame_events_;
 	};
 
@@ -128,25 +187,43 @@ namespace ns_engine {
 		Parent* parent_ = nullptr;
 	};
 
+	
+
 	class Scene;
 	class Game :public ns_sdl_winx::windowx,
 		public Temp<Game, Scene>,
 		public single<Game>
 	{
 	public:
-		void Create(const int& w, const int& h) {
-			WinInit();
-			windowx::Create(w, h);
-			winx_ = this;
+		void Create(const int& w, const int& h, const void *wind = nullptr) {
+			windowx::WinInit();
+			windowx::Create(w, h, wind);
+			camera_ = new Camera(this);
+			camera_->SetPostion(0, 0);
+			camera_->SetViewport(w, h);
 			ns_sdl_img::AssetMgr::Instance()->SetRenderer(render_);
+
+			AddWorld(ns_box2d::MainWorld::Instance());
 		}
 
 		void Draw(const unsigned& dt) {
+			for (auto& it:worlds_){
+				it->Update(dt);
+			}
 			Update(dt);
 		}
 
+		void AddWorld(ns_box2d::bx2World *w) { worlds_.push_back(w); }
+
+		void Destroy() { 
+			SAFE_DELETE(camera_);
+		}
+
+		Camera* MainCamera() { return camera_; }
+
 	protected:
 	private:
+		vector<ns_box2d::bx2World *> worlds_;
 	};
 
 	class Layer;
@@ -154,11 +231,7 @@ namespace ns_engine {
 		, public Base<Game>
 	{
 	public:
-		//void Update(const unsigned& dt);
-		Scene() {
-			x_ = y_ = 0;
-			w_ = 500, h_ = 400;
-		}
+		Scene() {}
 	protected:
 	private:
 	};
@@ -168,11 +241,7 @@ namespace ns_engine {
 		, public Base<Scene>
 	{
 	public:
-		//void Update(const unsigned& dt);
-		Layer() {
-			x_ = y_ = 0;
-			w_ = 300, h_ = 200;
-		}
+		Layer() {}
 	protected:
 	private:
 	};
@@ -181,14 +250,12 @@ namespace ns_engine {
 		, public Base<Layer>
 	{
 	public:
-		//void Update(const unsigned& dt);
 		Actor() {
-			SetName("actor");
-			x_ = y_ = 0;
-			w_ = 50, h_ = 40;
 		}
+	public:
 	protected:
 	private:
 	};
-
-}
+	
+	};
+#endif // !ENGINE_H
