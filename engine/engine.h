@@ -6,7 +6,11 @@
 
 namespace ns_engine {
 using namespace std;
+namespace ns_params {
+static float render_distance_ = 3 / 2;//3个视野内
+static float active_distance_ = 0.75;//1个多一点视野内
 
+};
 	enum AssetType {
 		Texture,
 		Sound,
@@ -18,22 +22,39 @@ using namespace std;
 			: win_(win), x_(0), y_(0), w_(0), h_(0){}
 		void SetPostion(const int &x, const int &y) {
 			x_ = x, y_ = y; 
+			ChangeCenter();
 		}
 
 		void SetViewport(const int& w, const int& h) {
 			w_ = w, h_ = h;
+			ChangeCenter();
 		}
 
 		void Move(const int &dx, const int &dy) {
 			x_ += dx, y_ += dy; 
+			ChangeCenter();
+		}
+
+		void CenterMoveToByMouse(const int& x, const int& y) {
+			auto m = x;
+			auto n = y;
+			Trans(m, n);
+			CenterMoveTo(m, n);
+		}
+
+		void CenterMoveTo(const int& x, const int& y) {
+			center_x_ = x, center_y_ = y;
+			x_ = center_x_ - w_ / 2;
+			y_ = center_y_ - h_ / 2;
 		}
 
 		template<typename T> 
 		bool Catch(T *tx, int &x, int &y){
 			auto ret = false;
-			auto x_dt = abs(tx->x_ - x_);
-			auto y_dt = abs(tx->y_ - y_);
-			if (x_dt < w_ && y_dt < h_) {
+			auto x_dt = abs(tx->x_ - center_x_);
+			auto y_dt = abs(tx->y_ - center_y_);
+			if (x_dt < w_ * ns_params::render_distance_ &&
+			    y_dt < h_ * ns_params::render_distance_) {
 				ret = true;
 			}
 			x = tx->x_, y = tx->y_;
@@ -42,7 +63,7 @@ using namespace std;
 			return ret;
 		}
 
-		void Trans(int& x, int& y) { 
+		void Trans(int &x, int &y) {
 			win_->Offset(x, y, 0, 0);
 			x += x_, y += y_;
 		}
@@ -50,8 +71,13 @@ using namespace std;
 	public:
 		ns_sdl_winx::windowx *win_;
 	protected:
+		void ChangeCenter() {
+			center_x_ = x_ + w_ / 2;
+			center_y_ = y_ + h_ / 2;
+		}
 	private:
 		int x_, y_, w_, h_;
+		int center_x_, center_y_;
 	};
 
 	using frame_event = function<void(void*)>;
@@ -108,7 +134,6 @@ using namespace std;
 				it->SetCamera(camera_);
 			}
 		}
-
 
 		void Sort() {
 			auto& ret = sub_;
@@ -187,8 +212,6 @@ using namespace std;
 		Parent* parent_ = nullptr;
 	};
 
-	
-
 	class Scene;
 	class Game :public ns_sdl_winx::windowx,
 		public Temp<Game, Scene>,
@@ -221,9 +244,13 @@ using namespace std;
 
 		Camera* MainCamera() { return camera_; }
 
+		Actor *Leadrol() { return leadrol_; }
+		void SetLeadrol(Actor *rol) { leadrol_ = rol; }
+
 	protected:
 	private:
 		vector<ns_box2d::bx2World *> worlds_;
+		Actor *leadrol_;
 	};
 
 	class Layer;
@@ -242,6 +269,9 @@ using namespace std;
 	{
 	public:
 		Layer() {}
+
+		void OnClick(const int &x, const int &y);
+		virtual void HandleClick(const int &x, const int &y);
 	protected:
 	private:
 	};
@@ -250,11 +280,39 @@ using namespace std;
 		, public Base<Layer>
 	{
 	public:
-		Actor() {
+		Actor() : is_click_(false) {}
+		bool Active() {
+			auto leadrol = Game::Instance()->Leadrol();
+			auto x = leadrol->x_;
+			auto y = leadrol->y_;
+			auto w = leadrol->w_;
+			auto h = leadrol->h_;
+			w *= ns_params::active_distance_;
+			h *= ns_params::active_distance_;
+			auto x_dt = abs(x_ - x);
+			auto y_dt = abs(y_ - y);
+			if (x_dt < w  &&
+			    y_dt < h ) {
+				return true;
+			}
+
+			return false;
 		}
+
+		bool OnClick(const int &x, const int &y) {
+			if (x_ < x && y_ < y && x_ + w_ > x && y_ + h_ > y) {
+				is_click_ = true;
+			} else {
+				is_click_ = false;
+			}
+			return is_click_;
+		}
+
+		bool IsClick() { return is_click_; }
 	public:
 	protected:
 	private:
+		bool is_click_;
 	};
 	
 	};

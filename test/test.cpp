@@ -63,9 +63,12 @@ void main()
 
 	wx->LoadAsset();
 
-	ns_sdl_winx::EventHandle::Instance()->SetMouseLUpHandle(
-		bind([](auto&& x, auto&& y, Actor* actor) {actor->SetPostionByMouse(x, y); }
-	, _1, _2, &actor));
+	ns_sdl_winx::EventHandle::Instance()->SetMouseLUpHandle(bind(
+		[](auto &&x, auto &&y, Actor *actor, Layer *layer) {
+			actor->SetPostionByMouse(x, y);
+			layer->OnClick(x, y);
+		},
+		_1, _2, &actor, &menu));
 
 	ns_sdl_winx::EventHandle::Instance()->AddKeyUpHandle(SDLK_x,
 		bind([](Actor* actor) {actor->SetPostion(0, 0); }
@@ -75,12 +78,38 @@ void main()
 		bind([](Actor* actor) {actor->SetPostion(0, 0); }
 	, &actor));
 
+	ns_sdl_winx::EventHandle::Instance()->AddMouseHandle(
+		SDL_MOUSEBUTTONDOWN,
+		[](const int &x, const int &y, const Uint8 &button) {
+			print("mouse down", int(button));
+		});
+
 	actor.AddFrameEvent([](void* self) {
 		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_X)) {
 			Actor *actor = (Actor *)self;
 			print(actor->x_, actor->y_);
 		}
+		auto index = 3;
+		if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(index)) {
+			//print(index, "button down");
+		}
 	});
+
+	int x = 0, y = 0;
+	menu.AddFrameEvent(bind(
+		[](void *self, int &x, int &y) {
+			auto layer = (Layer *)self;
+			auto index = 3;
+			auto m = x, n = y;
+			if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(
+				    index, &x, &y)) {
+				auto dx = x - m;
+				auto dy = y - n;
+				print(dx, dy);
+				layer->camera_->Move(dx, -dy); //屏幕坐标变换值和引擎坐标变换值是正负是相反的
+			}
+		},
+		_1, x, y));
 
 	wx->Run();
 }

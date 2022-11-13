@@ -12,7 +12,8 @@
 #define SAFE_DELETE(p)           do { delete (p); (p) = nullptr; } while(0)
 #define SAFE_DELETE_ARRAY(p)     do { if(p) { delete[] (p); (p) = nullptr; } } while(0)
 void DebugPrintf(const char* strOutputString, ...);
-
+using std::endl;
+using std::cout;
 template <typename T, typename ...Args>
 void print(T && arg, Args&&... args) {
 	cout << arg << " ";

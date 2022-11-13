@@ -15,7 +15,7 @@ namespace ns_sdl_winx {
 	using mouse_handle = void(*)(const int& x, const int& y);
 	using event_handle = void(*)();*/
 	using key_handle = function<void()>;
-	using mouse_handle = function<void(const int& x, const int& y)>;
+	using mouse_handle = function<void(const int& x, const int& y, const Uint8& button)>;
 	using event_handle = function<void(const SDL_Event& e)>;
 	class EventHandle :public single<EventHandle>
 	{
@@ -49,6 +49,12 @@ namespace ns_sdl_winx {
 
 		bool GetKeyState(const SDL_Scancode &key){
 			return key_state_[key];
+		}
+
+		//获取鼠标按钮是否按下状态
+		//mouse index 1:left 2:middle 3:right
+		bool GetMouseState(const int &index, int *x = nullptr, int *y = nullptr) {
+			return SDL_GetMouseState(x, y) & SDL_BUTTON(index);
 		}
 
 		/*bool MonitorKey(const SDL_Keycode& key) {
@@ -92,14 +98,16 @@ namespace ns_sdl_winx {
 			break;
 			case SDL_MOUSEBUTTONUP:
 			{
-				mouse_left_up_handle_(e.button.x, e.button.y);
+				if (mouse_left_up_handle_) {
+					mouse_left_up_handle_(e.button.x, e.button.y, e.button.button);
+				}
 			}
 			break;
 			default:
 			{
 				auto itor = mouse_handle_.find(e.type);
 				if (itor != mouse_handle_.end()) {
-					itor->second(e.button.x, e.button.y);
+					itor->second(e.button.x, e.button.y, e.button.button);
 					break;
 				}
 				auto it = event_handle_.find(e.type);
