@@ -123,7 +123,7 @@ b2Body *bx2World::CreateBody(Actor *actor)
 	fixtureDef.friction = 0.1;
 	fixtureDef.restitution = 0;
 
-	fixtureDef.filter.categoryBits = 0;
+	fixtureDef.filter.categoryBits = kCommon;
 
 	b2PolygonShape bodyShape;
 
@@ -140,7 +140,7 @@ void bx2World::UpdateElement() {
 	if (box2d_drive_)	{
 		for (auto &it : relate_) {
 			auto [x, y] = it.second->GetPosition();
-			it.first->SetPostion(x, y, false);
+			it.first->SetPostion(x, y);
 		}
 	} else {
 		for (auto &it : relate_) {
@@ -151,17 +151,21 @@ void bx2World::UpdateElement() {
 		}
 	}
 }
+b2Body *bx2World::CreateStaticBody(const int &x, const int &y, const int &w,
+				   const int &h) {
+	b2BodyDef bodyInfo;
+	bodyInfo.position.Set(x + w / 2, y + h / 2);
 
-void bx2Collsion::BeginContact(b2Contact* contact) {
+	auto body = world_->CreateBody(&bodyInfo);
 
-}
-void bx2Collsion::EndContact(b2Contact* contact) {
+	b2PolygonShape shape;
+	shape.SetAsBox(w / 2, h / 2);
 
-}
-void bx2Collsion::PreSolve(b2Contact* contact, const b2Manifold* oldManifold) {
+	b2FixtureDef fixture;
+	fixture.shape = &shape;
+	fixture.filter.categoryBits = kBuilding;
+	body->CreateFixture(&fixture);
 
-}
-void bx2Collsion::PostSolve(b2Contact* contact, const b2ContactImpulse* impulse) {
-
+	return body;
 }
 };

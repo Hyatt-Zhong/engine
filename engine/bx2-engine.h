@@ -58,14 +58,34 @@ private:
 	ns_engine::Camera *x;
 	};
 
-class bx2Collsion : public b2ContactListener {
+template<typename T>
+class bx2Collision : public b2ContactListener {
 	public:
-		void BeginContact(b2Contact *contact);
-		void EndContact(b2Contact *contact);
-		void PreSolve(b2Contact *contact,
-			      const b2Manifold *oldManifold);
-		void PostSolve(b2Contact *contact,
-			       const b2ContactImpulse *impulse);
+		void BeginContact(b2Contact* contact) {
+			auto bodyA = contact->GetFixtureA()->GetBody();
+			auto bodyB = contact->GetFixtureB()->GetBody();
+
+			auto actorA = (T *)bodyA->GetUserData().pointer;
+			auto actorB = (T *)bodyB->GetUserData().pointer;
+
+			if (actorA) {
+				actorA->OnCollision(actorB);
+			}
+			if (actorB) {
+				actorB->OnCollision(actorA);
+			}
+	}
+		void EndContact(b2Contact* contact) {
+
+		}
+		void PreSolve(b2Contact* contact,
+			const b2Manifold* oldManifold) {
+
+		}
+		void PostSolve(b2Contact* contact,
+			const b2ContactImpulse* impulse) {
+
+		}
 
 	protected:
 	private:
@@ -75,14 +95,18 @@ const float timeStep = 1.f / 60.f;
 const int velocityIterations = 20;
 const int positionIterations = 20;
 
+enum bx2CollisionMaskBits {
+	kNone=0,
+	kCommon,
+	kBuilding
+};
+
 using ns_engine::Actor;
 class bx2World {
 public:
 	bx2World() : world_(new b2World(b2Vec2(0, 0))),
-		  bxColl_(new bx2Collsion),
 		box2d_drive_(false)
 	{
-		world_->SetContactListener(bxColl_.get());
 	}
 
 	void SetGravity(const b2Vec2 &gravity)	{
@@ -110,6 +134,11 @@ public:
 		UpdateElement();
 	}
 
+	b2Body *CreateStaticBody(const int &x, const int &y, const int &w,
+				 const int &h);
+
+	shared_ptr<b2World> World() { return world_; }
+
 protected:
 	b2Body *CreateBody(Actor *actor);
 	void UpdateElement();
@@ -119,7 +148,6 @@ private:
 	map<Actor *, b2Body *> relate_;
 	shared_ptr<b2World> world_;
 	shared_ptr<bx2DbgDraw> bxdbg_;
-	shared_ptr<bx2Collsion> bxColl_;
 };
 
 class MainWorld:public bx2World,

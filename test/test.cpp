@@ -3,6 +3,20 @@
 
 using namespace ns_engine;
 using namespace placeholders;
+
+
+void AddActor(Layer& layer, Actor& actor, ns_box2d::bx2World* world, int x, int y, int w, int h) {
+	layer.AddSub(&actor);
+	actor.SetPostion(x, y);
+	actor.SetSize(w, h);
+	world->RelateWorld(&actor);
+
+	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
+	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
+	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
+	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);
+}
+
 #undef main
 void main()
 {
@@ -15,13 +29,10 @@ void main()
 
 	wx->AddSub(&scene);
 	scene.AddSub(&layer);
-	layer.AddSub(&actor);
 	scene.SetPostion(0, 0, false);
 	scene.SetSize(500, 400);
 	layer.SetPostion(0, 0, false);
 	layer.SetSize(300, 200);
-	actor.SetPostion(0, 0);
-	actor.SetSize(50, 40);
 
 	wx->MainCamera()->SetPostion(0, 0);
 
@@ -32,43 +43,45 @@ void main()
 
 	ns_box2d::MainWorld::Instance()->SetDbgDraw(layer.camera_);
 
-	ns_box2d::MainWorld::Instance()->RelateWorld(&actor);
+	ns_box2d::MainWorld::Instance()->SetGravity(b2Vec2(0, -100));
+	ns_box2d::MainWorld::Instance()->CreateStaticBody(0, -90, 300, 10);
+
 
 	//scene.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\scene.png", 0, 0);
 	//layer.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);
+
+	AddActor(layer, actor, ns_box2d::MainWorld::Instance(), 0, 0, 50, 40);
+	Actor second;
+	AddActor(layer, second, ns_box2d::MainWorld::Instance(), 80, 80, 50, 40);
 
 	Layer menu;
 	Actor button;
 	scene.AddSub(&menu);
-	menu.AddSub(&button);
 	menu.SetPostion(0, 0, false);
 	menu.SetSize(300, 200);
-	button.SetPostion(0, 0);
-	button.SetSize(50, 40);
 
 	ns_box2d::bx2World menu_world;
 	wx->AddWorld(&menu_world);
 	menu_world.SetDbgDraw(wx->MainCamera());
-	menu_world.RelateWorld(&button);
 
 	//menu.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
-	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
-	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
-	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
-	button.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);	
+	AddActor(menu, button, &menu_world, 0, 0, 50, 40);
+
+	ns_box2d::bx2Collision<Actor> collision;
+
+	ns_box2d::MainWorld::Instance()->World()->SetContactListener(&collision);
 
 	wx->LoadAsset();
 
 	ns_sdl_winx::EventHandle::Instance()->SetMouseLUpHandle(bind(
-		[](auto &&x, auto &&y, Actor *actor, Layer *layer) {
-			actor->SetPostionByMouse(x, y);
-			layer->OnClick(x, y);
+		[](auto &&x, auto &&y, auto &&button, Actor *actor,
+		   Layer *layer) {
+			if (button == 1) {//left button
+				actor->SetPostionByMouse(x, y);
+				layer->OnClick(x, y);
+			}
 		},
-		_1, _2, &actor, &menu));
+		_1, _2, _3, &actor, &menu));
 
 	ns_sdl_winx::EventHandle::Instance()->AddKeyUpHandle(SDLK_x,
 		bind([](Actor* actor) {actor->SetPostion(0, 0); }

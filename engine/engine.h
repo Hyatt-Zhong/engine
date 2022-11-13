@@ -309,6 +309,10 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 
 		bool IsClick() { return is_click_; }
+
+		virtual void OnCollision(Actor *actor) {
+			print("collision with", actor);
+		}
 	public:
 	protected:
 	private:
