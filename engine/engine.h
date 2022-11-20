@@ -3,6 +3,7 @@
 
 #include "sdl_windx.h"
 #include "bx2-engine.h"
+#include "data-def.h"
 
 namespace ns_engine {
 using namespace std;
@@ -18,11 +19,34 @@ static float active_distance_ = 0.75;//1个多一点视野内
 
 	class Camera {
 	public:
+		Camera() {}
+		void SetWindow(ns_sdl_winx::windowx *win) { win_ = win; }
+
 		Camera(ns_sdl_winx::windowx *win)
 			: win_(win), x_(0), y_(0), w_(0), h_(0){}
-		void SetPostion(const int &x, const int &y) {
-			x_ = x, y_ = y; 
-			ChangeCenter();
+		void SetPostion(const int &x, const int &y, bool center = true) {
+			if (center) {
+				center_x_ = x;
+				center_y_ = y;
+				x_ = center_x_ - w_ / 2;
+				y_ = center_y_ - h_ / 2;
+			} else {
+				x_ = x, y_ = y;
+				ChangeCenter();
+			}
+		}
+
+		void Follow(const int& delay, const int &x, const int &y, bool center = true) {
+			if (delay == 0) {
+				SetPostion(x, y, center);
+			} else {
+				pos_line_.push(make_pair(x, y));
+				if (pos_line_.size() >= delay) {
+					auto [xx, yy] = pos_line_.front();
+					pos_line_.pop();
+					SetPostion(xx, yy, center);
+				}
+			}
 		}
 
 		void SetViewport(const int& w, const int& h) {
@@ -78,6 +102,15 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	private:
 		int x_, y_, w_, h_;
 		int center_x_, center_y_;
+		std::queue<pair<int, int>> pos_line_;
+	};
+
+	class MainCamera : public Camera, 
+		public single<MainCamera> 
+	{
+	public:
+	protected:
+	private:
 	};
 
 	using frame_event = function<void(void*)>;
@@ -126,12 +159,29 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void AddSub(S* sub) {
 			sub->SetParent((S::Parent*)this);
 			sub->camera_ = camera_;
+			sub->world_ = world_;
 			sub_.push_back(sub);
+		}
+		void DeleteSub(S* sub) { 
+			for (auto it = sub_.begin(); it != sub_.end();) {
+				if (*it == sub) {
+					it = sub_.erase(it);
+				} else {
+					it++;
+				}
+			}
 		}
 		void SetCamera(Camera *camera) { 
 			camera_ = camera;
 			for (auto &it : sub_) {
 				it->SetCamera(camera_);
+			}
+		}
+
+		void SetWorld(ns_box2d::bx2World *world) {
+			world_ = world;
+			for (auto &it : sub_) {
+				it->SetWorld(world_);
 			}
 		}
 
@@ -147,12 +197,12 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			auto it = anims_.find(state);
 			if (it != anims_.end()) {
 				tuple<string, SDL_Texture*, int> tp = { path,texture,dt };
-				it->second.ts_.push_back(tp);
+				it->second.GetTs().push_back(tp);
 			}
 			else {
 				tuple<string, SDL_Texture*, int> tp = { path,texture,dt };
-				ns_sdl_img::Animation ani(ns_sdl_img::AssetMgr::Instance()->GetRenderer());
-				ani.ts_.push_back(tp);
+				auto rr = ns_sdl_img::AssetMgr::Instance()->GetRenderer();
+				ns_sdl_img::Animation ani(rr, tp);
 				anims_.insert(make_pair(state, ani));
 			}
 		}
@@ -186,6 +236,10 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			frame_events_.push_back(fe);
 		}
 
+		pair<int, int> GetCenter() {
+			return {x_ + w_ / 2, y_ + h_ / 2};
+		}
+
 		virtual bool IsAlive() { return true; }
 
 		vector<S*> sub_;
@@ -198,6 +252,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		map<int, ns_sdl_img::Animation> anims_;
 		ns_sdl_img::Animation* curr_anim_;
 		Camera* camera_;
+		ns_box2d::bx2World *world_;
 		vector<frame_event> frame_events_;
 	};
 
@@ -221,11 +276,13 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void Create(const int& w, const int& h, const void *wind = nullptr) {
 			windowx::WinInit();
 			windowx::Create(w, h, wind);
-			camera_ = new Camera(this);
+			camera_ = MainCamera::Instance();
+			camera_->SetWindow(this);
 			camera_->SetPostion(0, 0);
 			camera_->SetViewport(w, h);
 			ns_sdl_img::AssetMgr::Instance()->SetRenderer(render_);
 
+			world_ = ns_box2d::MainWorld::Instance();
 			AddWorld(ns_box2d::MainWorld::Instance());
 		}
 
@@ -272,6 +329,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 
 		void OnClick(const int &x, const int &y);
 		virtual void HandleClick(const int &x, const int &y);
+		void CameraFollow(const int &delay, Actor *x, bool center = true);
 	protected:
 	private:
 	};
@@ -280,7 +338,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		, public Base<Layer>
 	{
 	public:
-		Actor() : is_click_(false) {}
+		Actor() : is_click_(false), is_destroy_(false),vel_(0,0) {}
 		bool Active() {
 			auto leadrol = Game::Instance()->Leadrol();
 			auto x = leadrol->x_;
@@ -299,6 +357,32 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			return false;
 		}
 
+		void Update(const unsigned &dt) {
+			auto &[x, y] = vel_;
+			x_ += x, y_ += y;
+			Temp<Actor, Actor>::Update(dt);
+			if (is_destroy_)
+			{
+				world_->Destroy(this);
+				parent_->DeleteSub(this);
+			}
+		}
+
+		void SetVel(const d_vel &v) {
+			auto bx2_drive = ns_box2d::MainWorld::Instance()->IsBx2Drive();
+			if (bx2_drive)
+			{
+				auto body = ns_box2d::MainWorld::Instance()->GetBody(this);
+				//body->ApplyForceToCenter(v, true);//设置作用力				
+				if (bx2_vel_ != v) {
+					body->SetLinearVelocity(v);
+					bx2_vel_ = v;
+				}
+			} else {
+				vel_ = v;
+			}
+		}
+
 		bool OnClick(const int &x, const int &y) {
 			if (x_ < x && y_ < y && x_ + w_ > x && y_ + h_ > y) {
 				is_click_ = true;
@@ -315,8 +399,19 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 	public:
 	protected:
-	private:
+		bool is_destroy_;
 		bool is_click_;
+		d_vel vel_;
+		d_vel bx2_vel_;
+	private:
+	};
+
+	class xActor : public Actor
+	{
+	public:
+		using Actor::is_destroy_;
+	protected:
+	private:
 	};
 	
 	};

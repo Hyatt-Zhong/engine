@@ -75,16 +75,16 @@ class bx2Collision : public b2ContactListener {
 				actorB->OnCollision(actorA);
 			}
 	}
-		void EndContact(b2Contact* contact) {
-
+		void EndContact(b2Contact *contact) {
+			print("EndContact");
 		}
 		void PreSolve(b2Contact* contact,
-			const b2Manifold* oldManifold) {
-
+			const b2Manifold* oldManifold) { 
+			print("PreSolve");
 		}
 		void PostSolve(b2Contact* contact,
-			const b2ContactImpulse* impulse) {
-
+			const b2ContactImpulse* impulse) { 
+			print("PostSolve");
 		}
 
 	protected:
@@ -126,6 +126,27 @@ public:
 		relate_.insert(make_pair(actor, body));
 	}
 
+	void RelateWorldWithStatic(Actor *actor) {
+		auto body = CreateBody(actor, false);
+		relate_.insert(make_pair(actor, body));
+	}
+
+	void Destroy(Actor* actor) {
+		auto it = relate_.find(actor);
+		if (it != relate_.end()) {
+			world_->DestroyBody(it->second);
+			relate_.erase(it);
+		}
+	}
+
+	b2Body *GetBody(Actor *actor) {
+		auto it = relate_.find(actor);
+		if (it != relate_.end()) {
+			return it->second;
+		}
+		return nullptr;
+	}
+
 	void Update(const unsigned &dt)
 	{
 		world_->Step(timeStep, velocityIterations, positionIterations);
@@ -139,8 +160,10 @@ public:
 
 	shared_ptr<b2World> World() { return world_; }
 
-protected:
-	b2Body *CreateBody(Actor *actor);
+	bool IsBx2Drive() { return box2d_drive_; }
+
+	protected:
+	b2Body *CreateBody(Actor *actor, bool dynamic = true);
 	void UpdateElement();
 
 private:

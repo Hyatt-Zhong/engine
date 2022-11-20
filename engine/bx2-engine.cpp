@@ -4,6 +4,8 @@
 using namespace ns_engine;
 namespace ns_box2d {
 
+const int nx = 32;//绘制坐标和物理坐标的转换倍数
+
 bx2DbgDraw::bx2DbgDraw(ns_engine::Camera *xs)
 {
 	x = xs;
@@ -91,7 +93,9 @@ SDL_Point bx2DbgDraw::b2point2sdlpoint(const b2Vec2 &bp)
 {
 	SDL_Point ret;
 	auto &[x, y] = ret;
-	dbg_rect obj = {bp.x, bp.y, 0, 0};
+	auto m = bp.x * nx;
+	auto n = bp.y * nx;
+	dbg_rect obj = {m, n, 0, 0};
 	bx2DbgDraw::x->Catch(&obj, x, y);
 	return ret;
 }
@@ -99,39 +103,56 @@ void bx2DbgDraw::b2point2sdlpoint(SDL_Point *sp, const b2Vec2 *bp, int count)
 {
 	for (int i = 0; i < count; i++) {
 		auto &[x, y] = sp[i];
-		dbg_rect obj = {bp[i].x, bp[i].y, 0, 0};
+		auto m = bp[i].x * nx;
+		auto n = bp[i].y * nx;
+		dbg_rect obj = {m, n, 0, 0};
 		bx2DbgDraw::x->Catch(&obj, x, y);
 	}
 }
 
-b2Body *bx2World::CreateBody(Actor *actor)
-{
+b2Body *bx2World::CreateBody(Actor *actor, bool dynamic /*= true*/) {
+	float x = actor->x_;
+	float y = actor->y_;
+	float w = actor->w_;
+	float h = actor->h_;
+	x /= nx;
+	y /= nx;
+	w /= nx;
+	h /= nx;
 	//////////////////////
 	b2BodyDef bodydef;
 	bodydef.userData.pointer = (uintptr_t)actor;
 	//默认静态
 	//bodydef.type = b2_staticBody;
-	bodydef.type = b2_dynamicBody;
+	bodydef.type = dynamic ? b2_dynamicBody : b2_staticBody;
 	//刚体位置就是精灵位置
-	bodydef.position.Set(actor->x_, actor->y_);
+	bodydef.position.Set(x + w / 2, y + h / 2);
+	bodydef.linearDamping = 0.6f;
 	auto body = world_->CreateBody(&bodydef);
 
 	b2FixtureDef fixtureDef;
 	//物体的密度
-	fixtureDef.density = 1;
+	//fixtureDef.density = .1;
 	//物体的摩擦
-	fixtureDef.friction = 0.1;
+	fixtureDef.friction = 0.0;
 	fixtureDef.restitution = 0;
 
 	fixtureDef.filter.categoryBits = kCommon;
+	//对象之间有碰撞检测但是又不想让它们有碰撞反应，那么你就需要把isSensor设置成true
+	fixtureDef.isSensor = true;
 
 	b2PolygonShape bodyShape;
 
-	bodyShape.SetAsBox(actor->w_/2, actor->h_/2);
+	bodyShape.SetAsBox(w / 2, h / 2);
 	fixtureDef.shape = &bodyShape;
 	body->CreateFixture(&fixtureDef);
 
 	body->SetFixedRotation(true);
+
+	b2MassData md;
+	body->GetMassData(&md);
+	md.mass = 1;
+	body->SetMassData(&md);
 
 	return body;
 }
@@ -140,19 +161,34 @@ void bx2World::UpdateElement() {
 	if (box2d_drive_)	{
 		for (auto &it : relate_) {
 			auto [x, y] = it.second->GetPosition();
+			x *= nx;
+			y *= nx;
 			it.first->SetPostion(x, y);
 		}
 	} else {
 		for (auto &it : relate_) {
-			auto x = it.first->x_ + it.first->w_ / 2;
-			auto y = it.first->y_ + it.first->h_ / 2;
+			float x = it.first->x_ + it.first->w_ / 2;
+			float y = it.first->y_ + it.first->h_ / 2;
+
+			x /= nx;
+			y /= nx;
 			it.second->SetTransform(
 				b2Vec2(x,y), 0);
 		}
 	}
 }
-b2Body *bx2World::CreateStaticBody(const int &x, const int &y, const int &w,
-				   const int &h) {
+b2Body *bx2World::CreateStaticBody(const int &xx, const int &yy, const int &ww,
+				   const int &hh) {
+	float x = xx;
+	float y = yy;
+	float w = ww;
+	float h = hh;
+
+	x /= nx;
+	y /= nx;
+	w /= nx;
+	h /= nx;
+
 	b2BodyDef bodyInfo;
 	bodyInfo.position.Set(x + w / 2, y + h / 2);
 

@@ -1,5 +1,7 @@
 project(xTest)
 
+set (CMAKE_CXX_STANDARD 17)
+
 link_directories(../lib/SDL/x86)
 link_directories(../lib/SDL_IMG/x86)
 link_directories(../lib/box2d)

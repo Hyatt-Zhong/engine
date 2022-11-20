@@ -217,7 +217,11 @@ class Animation {
 	using node = tuple<SDL_Texture *, int, int>;
 
 public:
-	Animation(renderer *r) : r_(r), tick_(0) {}
+	Animation(renderer *r, tuple<string, SDL_Texture *, int>& first)
+		: r_(r), tick_(0) {
+		ts_.push_back(first);
+		LoadAsset();
+	}
 	void Update(const unsigned &dt, const int &x, const int &y,
 		    const int &w, const int &h)
 	{
@@ -240,7 +244,9 @@ public:
 		curr_ = first_;
 		Next();
 	}
-	seq ts_;
+	seq &GetTs() {
+		return ts_;
+	}
 
 protected:
 	void Next()
@@ -257,6 +263,7 @@ protected:
 	}
 
 private:
+	seq ts_;
 	int tick_;
 	node first_;
 	node curr_;

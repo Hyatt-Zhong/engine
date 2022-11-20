@@ -4,12 +4,31 @@
 using namespace ns_engine;
 using namespace placeholders;
 
+class bullet:public xActor
+{
+public:
+	void OnCollision(Actor *actor) {
+		print("collision with", actor);
+		if (actor) {
+			((xActor*)actor)->is_destroy_ = true;
+		}
+	}
 
-void AddActor(Layer& layer, Actor& actor, ns_box2d::bx2World* world, int x, int y, int w, int h) {
+protected:
+private:
+};
+
+
+void AddActor(Layer& layer, Actor& actor, int x, int y, int w, int h,bool center=false) {
 	layer.AddSub(&actor);
+	if (center) {
+		x -= w / 2, y -= h / 2;
+	}
 	actor.SetPostion(x, y);
 	actor.SetSize(w, h);
-	world->RelateWorld(&actor);
+	if (layer.world_) {
+		layer.world_->RelateWorld(&actor);
+	}
 
 	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
 	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
@@ -34,12 +53,12 @@ void main()
 	layer.SetPostion(0, 0, false);
 	layer.SetSize(300, 200);
 
-	wx->MainCamera()->SetPostion(0, 0);
+	wx->MainCamera()->SetPostion(0, 0,false);
 
 	Camera camera(wx);
 	camera.SetViewport(500, 400);
 	layer.SetCamera(&camera);
-	layer.camera_->SetPostion(-100, -100);
+	layer.camera_->SetPostion(0, 0);
 
 	ns_box2d::MainWorld::Instance()->SetDbgDraw(layer.camera_);
 
@@ -50,9 +69,9 @@ void main()
 	//scene.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\scene.png", 0, 0);
 	//layer.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
 
-	AddActor(layer, actor, ns_box2d::MainWorld::Instance(), 0, 0, 50, 40);
+	AddActor(layer, actor, 0, 0, 50, 40);
 	Actor second;
-	AddActor(layer, second, ns_box2d::MainWorld::Instance(), 80, 80, 50, 40);
+	AddActor(layer, second, 80, 80, 50, 40);
 
 	Layer menu;
 	Actor button;
@@ -63,9 +82,10 @@ void main()
 	ns_box2d::bx2World menu_world;
 	wx->AddWorld(&menu_world);
 	menu_world.SetDbgDraw(wx->MainCamera());
+	menu.SetWorld(&menu_world);
 
 	//menu.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
-	AddActor(menu, button, &menu_world, 0, 0, 50, 40);
+	AddActor(menu, button, 0, 0, 50, 40);
 
 	ns_box2d::bx2Collision<Actor> collision;
 
@@ -73,15 +93,27 @@ void main()
 
 	wx->LoadAsset();
 
+	//ns_sdl_winx::EventHandle::Instance()->SetMouseLUpHandle(bind(
+	//	[](auto &&x, auto &&y, auto &&button, Actor *actor,
+	//	   Layer *layer) {
+	//		if (button == 1) {//left button
+	//			actor->SetPostionByMouse(x, y);
+	//			layer->OnClick(x, y);
+	//		}
+	//	},
+	//	_1, _2, _3, &actor, &menu));
+
 	ns_sdl_winx::EventHandle::Instance()->SetMouseLUpHandle(bind(
-		[](auto &&x, auto &&y, auto &&button, Actor *actor,
-		   Layer *layer) {
-			if (button == 1) {//left button
-				actor->SetPostionByMouse(x, y);
-				layer->OnClick(x, y);
+		[](auto &&xx, auto &&yy, auto &&button, Layer* layer) {
+			if (button == 1) { //left button
+				auto actor = new bullet;
+				auto x = xx, y = yy;
+				layer->camera_->Trans(x, y);
+				AddActor(*layer, *actor, x, y, 50, 40, true);
+				//ns_box2d::MainWorld::Instance()->RelateWorld(actor);
 			}
 		},
-		_1, _2, _3, &actor, &menu));
+		_1, _2, _3, &layer));
 
 	ns_sdl_winx::EventHandle::Instance()->AddKeyUpHandle(SDLK_x,
 		bind([](Actor* actor) {actor->SetPostion(0, 0); }
@@ -93,9 +125,15 @@ void main()
 
 	ns_sdl_winx::EventHandle::Instance()->AddMouseHandle(
 		SDL_MOUSEBUTTONDOWN,
-		[](const int &x, const int &y, const Uint8 &button) {
-			print("mouse down", int(button));
-		});
+		bind(
+			[](const int &x, const int &y, const Uint8 &button,
+			   Layer *layer) {
+				print("mouse down", int(button));
+				if (button == 1) { //left button
+					layer->OnClick(x, y);
+				}
+			},
+			_1, _2, _3, &menu));
 
 	actor.AddFrameEvent([](void* self) {
 		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_X)) {

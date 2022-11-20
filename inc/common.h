@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cmath>
+#include <queue>
 
 #define SAFE_DELETE(p)           do { delete (p); (p) = nullptr; } while(0)
 #define SAFE_DELETE_ARRAY(p)     do { if(p) { delete[] (p); (p) = nullptr; } } while(0)
