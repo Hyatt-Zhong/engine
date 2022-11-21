@@ -2,6 +2,7 @@
 #include "../engine/engine.h"
 
 using namespace ns_engine;
+using namespace ns_box2d;
 using namespace placeholders;
 
 class bullet:public xActor
@@ -44,7 +45,7 @@ void main()
 
 	Scene scene;
 	Layer layer;
-	Actor actor;
+	Actor actor(SampleFunc);
 
 	wx->AddSub(&scene);
 	scene.AddSub(&layer);
@@ -53,24 +54,24 @@ void main()
 	layer.SetPostion(0, 0, false);
 	layer.SetSize(300, 200);
 
-	wx->MainCamera()->SetPostion(0, 0,false);
+	ns_engine::MainCamera::Instance()->SetPostion(0, 0, false);
 
 	Camera camera(wx);
 	camera.SetViewport(500, 400);
 	layer.SetCamera(&camera);
 	layer.camera_->SetPostion(0, 0);
 
-	ns_box2d::MainWorld::Instance()->SetDbgDraw(layer.camera_);
+	MainWorld::Instance()->SetDbgDraw(layer.camera_);
 
-	ns_box2d::MainWorld::Instance()->SetGravity(b2Vec2(0, -100));
-	ns_box2d::MainWorld::Instance()->CreateStaticBody(0, -90, 300, 10);
+	MainWorld::Instance()->SetGravity(b2Vec2(0, -100));
+	MainWorld::Instance()->CreateStaticBody(0, -90, 300, 10);
 
 
 	//scene.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\scene.png", 0, 0);
 	//layer.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
 
 	AddActor(layer, actor, 0, 0, 50, 40);
-	Actor second;
+	Actor second(SampleFunc);
 	AddActor(layer, second, 80, 80, 50, 40);
 
 	Layer menu;
@@ -79,17 +80,17 @@ void main()
 	menu.SetPostion(0, 0, false);
 	menu.SetSize(300, 200);
 
-	ns_box2d::bx2World menu_world;
+	bx2World menu_world;
 	wx->AddWorld(&menu_world);
-	menu_world.SetDbgDraw(wx->MainCamera());
+	menu_world.SetDbgDraw(ns_engine::MainCamera::Instance());
 	menu.SetWorld(&menu_world);
 
 	//menu.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
 	AddActor(menu, button, 0, 0, 50, 40);
 
-	ns_box2d::bx2Collision<Actor> collision;
+	bx2Collision<Actor> collision;
 
-	ns_box2d::MainWorld::Instance()->World()->SetContactListener(&collision);
+	MainWorld::Instance()->World()->SetContactListener(&collision);
 
 	wx->LoadAsset();
 
@@ -107,10 +108,11 @@ void main()
 		[](auto &&xx, auto &&yy, auto &&button, Layer* layer) {
 			if (button == 1) { //left button
 				auto actor = new bullet;
+				actor->SetCreateBodyFunc(SampleFunc);
 				auto x = xx, y = yy;
 				layer->camera_->Trans(x, y);
 				AddActor(*layer, *actor, x, y, 50, 40, true);
-				//ns_box2d::MainWorld::Instance()->RelateWorld(actor);
+				//MainWorld::Instance()->RelateWorld(actor);
 			}
 		},
 		_1, _2, _3, &layer));

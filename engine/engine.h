@@ -113,6 +113,12 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	private:
 	};
 
+	struct SizeInfo {
+		float x_, y_, w_, h_;
+		SizeInfo(int x, int y, int w, int h) : x_(x), y_(y), w_(w), h_(h) {} 
+		void div(const int &nx) { x_ /= nx, y_ /= nx, w_ /= nx, h_ /= nx; }
+	};
+
 	using frame_event = function<void(void*)>;
 	template<typename T, typename S>
 	class Temp
@@ -242,6 +248,10 @@ static float active_distance_ = 0.75;//1个多一点视野内
 
 		virtual bool IsAlive() { return true; }
 
+		SizeInfo GetInfo() {
+			return SizeInfo(x_, y_, w_, h_);
+		}
+
 		vector<S*> sub_;
 		int zorder_;
 
@@ -299,8 +309,6 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			SAFE_DELETE(camera_);
 		}
 
-		Camera* MainCamera() { return camera_; }
-
 		Actor *Leadrol() { return leadrol_; }
 		void SetLeadrol(Actor *rol) { leadrol_ = rol; }
 
@@ -338,7 +346,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		, public Base<Layer>
 	{
 	public:
-		Actor() : is_click_(false), is_destroy_(false),vel_(0,0) {}
+		Actor() : is_click_(false), is_destroy_(false), vel_(0, 0), create_body_(nullptr) {}
 		bool Active() {
 			auto leadrol = Game::Instance()->Leadrol();
 			auto x = leadrol->x_;
@@ -398,6 +406,12 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			print("collision with", actor);
 		}
 	public:
+		using CreateBodyFunc = b2Body* (*)(Actor*);
+		Actor(const CreateBodyFunc &create_body) : is_click_(false), is_destroy_(false),
+			vel_(0, 0), create_body_(create_body) {}
+		void SetCreateBodyFunc(CreateBodyFunc func) { create_body_ = func; }
+		CreateBodyFunc create_body_;
+
 	protected:
 		bool is_destroy_;
 		bool is_click_;

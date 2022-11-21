@@ -110,49 +110,29 @@ void bx2DbgDraw::b2point2sdlpoint(SDL_Point *sp, const b2Vec2 *bp, int count)
 	}
 }
 
-b2Body *bx2World::CreateBody(Actor *actor, bool dynamic /*= true*/) {
-	float x = actor->x_;
-	float y = actor->y_;
-	float w = actor->w_;
-	float h = actor->h_;
-	x /= nx;
-	y /= nx;
-	w /= nx;
-	h /= nx;
-	//////////////////////
-	b2BodyDef bodydef;
-	bodydef.userData.pointer = (uintptr_t)actor;
-	//默认静态
-	//bodydef.type = b2_staticBody;
-	bodydef.type = dynamic ? b2_dynamicBody : b2_staticBody;
-	//刚体位置就是精灵位置
-	bodydef.position.Set(x + w / 2, y + h / 2);
-	bodydef.linearDamping = 0.6f;
-	auto body = world_->CreateBody(&bodydef);
+b2Body *bx2World::CreateBody(Actor *actor) {
 
-	b2FixtureDef fixtureDef;
-	//物体的密度
-	//fixtureDef.density = .1;
-	//物体的摩擦
-	fixtureDef.friction = 0.0;
-	fixtureDef.restitution = 0;
+	auto info = actor->GetInfo();
+	info.div(nx);
+	auto [x, y, w, h] = info;
 
-	fixtureDef.filter.categoryBits = kCommon;
-	//对象之间有碰撞检测但是又不想让它们有碰撞反应，那么你就需要把isSensor设置成true
-	fixtureDef.isSensor = true;
+	if (actor->create_body_)
+	{
+		return actor->create_body_(actor);
+	}
 
-	b2PolygonShape bodyShape;
+	b2BodyDef bodyInfo;
+	bodyInfo.position.Set(x + w / 2, y + h / 2);
 
-	bodyShape.SetAsBox(w / 2, h / 2);
-	fixtureDef.shape = &bodyShape;
-	body->CreateFixture(&fixtureDef);
+	auto body = world_->CreateBody(&bodyInfo);
 
-	body->SetFixedRotation(true);
+	b2PolygonShape shape;
+	shape.SetAsBox(w / 2, h / 2);
 
-	b2MassData md;
-	body->GetMassData(&md);
-	md.mass = 1;
-	body->SetMassData(&md);
+	b2FixtureDef fixture;
+	fixture.shape = &shape;
+	fixture.filter.categoryBits = kBuilding;
+	body->CreateFixture(&fixture);
 
 	return body;
 }
@@ -177,18 +157,14 @@ void bx2World::UpdateElement() {
 		}
 	}
 }
+
 b2Body *bx2World::CreateStaticBody(const int &xx, const int &yy, const int &ww,
 				   const int &hh) {
-	float x = xx;
-	float y = yy;
-	float w = ww;
-	float h = hh;
+	SizeInfo info(xx, yy, ww, hh);
+	info.div(nx);
 
-	x /= nx;
-	y /= nx;
-	w /= nx;
-	h /= nx;
-
+	auto [x, y, w, h] = info;
+	
 	b2BodyDef bodyInfo;
 	bodyInfo.position.Set(x + w / 2, y + h / 2);
 
@@ -201,6 +177,50 @@ b2Body *bx2World::CreateStaticBody(const int &xx, const int &yy, const int &ww,
 	fixture.shape = &shape;
 	fixture.filter.categoryBits = kBuilding;
 	body->CreateFixture(&fixture);
+
+	return body;
+}
+
+b2Body *SampleFunc(Actor *actor) {
+	auto info = actor->GetInfo();
+	info.div(nx);
+
+	auto [x, y, w, h] = info;
+	//////////////////////
+	b2BodyDef bodydef;
+	bodydef.userData.pointer = (uintptr_t)actor;
+	//默认静态
+	//bodydef.type = b2_staticBody;
+	bodydef.type = b2_dynamicBody /*: b2_staticBody*/;
+	//刚体位置就是精灵位置
+	bodydef.position.Set(x + w / 2, y + h / 2);
+	//线性阻尼
+	//bodydef.linearDamping = 0.6f;
+	auto body = actor->world_->World()->CreateBody(&bodydef);
+
+	b2FixtureDef fixtureDef;
+	//物体的密度
+	//fixtureDef.density = .1;
+	//物体的摩擦
+	fixtureDef.friction = 0.0;
+	fixtureDef.restitution = 0;
+
+	fixtureDef.filter.categoryBits = kCommon;
+	//对象之间有碰撞检测但是又不想让它们有碰撞反应，那么你就需要把isSensor设置成true
+	//fixtureDef.isSensor = true;
+
+	b2PolygonShape bodyShape;
+
+	bodyShape.SetAsBox(w / 2, h / 2);
+	fixtureDef.shape = &bodyShape;
+	body->CreateFixture(&fixtureDef);
+
+	body->SetFixedRotation(true);
+
+	b2MassData md;
+	body->GetMassData(&md);
+	md.mass = 1;
+	body->SetMassData(&md);
 
 	return body;
 }

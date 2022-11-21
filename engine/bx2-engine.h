@@ -126,11 +126,6 @@ public:
 		relate_.insert(make_pair(actor, body));
 	}
 
-	void RelateWorldWithStatic(Actor *actor) {
-		auto body = CreateBody(actor, false);
-		relate_.insert(make_pair(actor, body));
-	}
-
 	void Destroy(Actor* actor) {
 		auto it = relate_.find(actor);
 		if (it != relate_.end()) {
@@ -162,8 +157,8 @@ public:
 
 	bool IsBx2Drive() { return box2d_drive_; }
 
-	protected:
-	b2Body *CreateBody(Actor *actor, bool dynamic = true);
+protected:
+	b2Body *CreateBody(Actor *actor);
 	void UpdateElement();
 
 private:
@@ -172,6 +167,8 @@ private:
 	shared_ptr<b2World> world_;
 	shared_ptr<bx2DbgDraw> bxdbg_;
 };
+
+b2Body *SampleFunc(Actor *actor);
 
 class MainWorld:public bx2World,
 	public single<MainWorld>

@@ -1,6 +1,7 @@
 #include <engine.h>
 
 using namespace ns_engine;
+using namespace ns_box2d;
 using namespace placeholders;
 
 void AddActorWithoutTexture(Layer &layer, Actor &actor, int x, int y, int w, int h, bool center = false) {
@@ -12,18 +13,6 @@ void AddActorWithoutTexture(Layer &layer, Actor &actor, int x, int y, int w, int
 	actor.SetSize(w, h);
 	if (layer.world_) {
 		layer.world_->RelateWorld(&actor);
-	}
-}
-
-void AddSaticActorWithoutTexture(Layer &layer, Actor &actor, int x, int y, int w, int h, bool center = false) {
-	layer.AddSub(&actor);
-	if (center) {
-		x -= w / 2, y -= h / 2;
-	}
-	actor.SetPostion(x, y);
-	actor.SetSize(w, h);
-	if (layer.world_) {
-		layer.world_->RelateWorldWithStatic(&actor);
 	}
 }
 
@@ -57,30 +46,30 @@ void main() {
 	layer.SetPostion(0, 0, false);
 	layer.SetSize(width, height);
 
-	wx->MainCamera()->SetPostion(0, 0, false);
-	ns_box2d::MainWorld::Instance()->SetDbgDraw(ns_engine::MainCamera::Instance());
-	ns_box2d::MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
+	MainCamera::Instance()->SetPostion(0, 0, false);
+	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
+	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
 
-	Actor actor;
-	AddActor(layer, actor, 0, 0, 50, 40);
+	Actor actor(SampleFunc);
+	AddActor(layer, actor, 5, 5, 50, 40);
 
-	Actor second;
+	Actor second(SampleFunc);
 	AddActor(layer, second, 55, 55, 50, 40);
 
 	Actor limit_bottom;
-	AddSaticActorWithoutTexture(layer, limit_bottom, 0, -2, width, 2);
+	AddActorWithoutTexture(layer, limit_bottom, 0, 0, width, 1);
 
 	Actor limit_top;
-	AddSaticActorWithoutTexture(layer, limit_top, 0, height-3, width, 2);
+	AddActorWithoutTexture(layer, limit_top, 0, height, width, 1);
 
 	Actor limit_left;
-	AddSaticActorWithoutTexture(layer, limit_left, 0, 0, 2, height);
+	AddActorWithoutTexture(layer, limit_left, 0, 0, 1, height);
 
 	Actor limit_right;
-	AddSaticActorWithoutTexture(layer, limit_right, width-1, 0, 2, height);
+	AddActorWithoutTexture(layer, limit_right, width-1, 0, 1, height);
 
-	ns_box2d::bx2Collision<Actor> collision;
-	ns_box2d::MainWorld::Instance()->World()->SetContactListener(&collision);
+	bx2Collision<Actor> collision;
+	MainWorld::Instance()->World()->SetContactListener(&collision);
 	
 	layer.CameraFollow(0, &limit_bottom, false);
 
