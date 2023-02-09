@@ -30,3 +30,6 @@ set(BOOST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/boostlib)
 add_subdirectory(engine)
 add_subdirectory(test)
 add_subdirectory(BBee)
+add_subdirectory(modulebuilder)
+add_subdirectory(jsoncpp)
+

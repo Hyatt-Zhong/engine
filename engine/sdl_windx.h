@@ -4,6 +4,7 @@
 #include <SDL/include/SDL.h>
 #include <SDL/include/SDL_image.h>
 #include <common.h>
+#include <mutex>
 
 using renderer = SDL_Renderer;
 namespace ns_sdl_winx {
@@ -161,6 +162,7 @@ namespace ns_sdl_winx {
 		}
 		void Run() {
 			while (!quit_) {
+				unique_lock<mutex> lk(mtx_);
 				auto tick1 = GetTickCount64();
 				HandleEvent();
 				SDL_RenderClear(render_);
@@ -169,8 +171,11 @@ namespace ns_sdl_winx {
 				auto tick2 = GetTickCount64();
 				dt_ = tick2 - tick1;
 				if (dt_ < frame_interval) {
+					lk.unlock();
 					SDL_Delay(frame_interval - dt_);
 					dt_ = frame_interval;
+				} else {
+					lk.unlock();
 				}
 			}
 		}
@@ -188,6 +193,7 @@ namespace ns_sdl_winx {
 		}
 	public:
 		renderer* render_;
+		mutex mtx_;
 	protected:
 		//原始Windows窗口坐标系下的点作为原点，比如0，0是左上角的点作为原点
 		void SetOrigin(const int& x, const int& y)

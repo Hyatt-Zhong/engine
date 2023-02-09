@@ -9,6 +9,8 @@
 #include <bitset>
 #include <cmath>
 #include <queue>
+#include <sstream>
+#include <fstream>
 
 #define SAFE_DELETE(p)           do { delete (p); (p) = nullptr; } while(0)
 #define SAFE_DELETE_ARRAY(p)     do { if(p) { delete[] (p); (p) = nullptr; } } while(0)
@@ -24,6 +26,13 @@ void print(T && arg, Args&&... args) {
 	if constexpr (sizeof...(args) == 0) {
 		cout << endl;
 	}
+}
+inline std::string read_file(const std::string& path) {
+	std::fstream fs;
+	fs.open(path);
+	std::string ret;
+	fs >> ret;
+	return ret;
 }
 
 template<class T>

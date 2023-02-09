@@ -1,4 +1,6 @@
 #include <engine.h>
+#include <thread>
+#include <module.h>
 
 using namespace ns_engine;
 using namespace ns_box2d;
@@ -30,72 +32,125 @@ void AddActor(Layer& layer, Actor& actor, int x, int y, int w, int h,bool center
 const int width = 500;
 const int height = 400;
 
-
 #undef main
 void main() {
-	auto wx = Game::Instance();
-	wx->Create(width, height);
+	struct data_pack {
+		Game *xwx = nullptr;
+		Layer xlayer;
+		Scene xscene;
+		int x, y, w, h;
+		HWND parent;
 
-	Scene scene;
-	Layer layer;
+		Actor *xmod = nullptr;
 
-	wx->AddSub(&scene);
-	scene.AddSub(&layer);
-	scene.SetPostion(0, 0, false);
-	scene.SetSize(width, height);
-	layer.SetPostion(0, 0, false);
-	layer.SetSize(width, height);
-
-	MainCamera::Instance()->SetPostion(0, 0, false);
-	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
-	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
-
-	Actor actor(SampleFunc);
-	AddActor(layer, actor, 5, 5, 50, 40);
-
-	Actor second(SampleFunc);
-	AddActor(layer, second, 55, 55, 50, 40);
-
-	Actor limit_bottom;
-	AddActorWithoutTexture(layer, limit_bottom, 0, 0, width, 1);
-
-	Actor limit_top;
-	AddActorWithoutTexture(layer, limit_top, 0, height, width, 1);
-
-	Actor limit_left;
-	AddActorWithoutTexture(layer, limit_left, 0, 0, 1, height);
-
-	Actor limit_right;
-	AddActorWithoutTexture(layer, limit_right, width-1, 0, 1, height);
-
-	bx2Collision<Actor> collision;
-	MainWorld::Instance()->World()->SetContactListener(&collision);
-	
-	layer.CameraFollow(0, &limit_bottom, false);
-
-	actor.AddFrameEvent([](void *self) {
-		Actor *actor = (Actor *)self;
-		auto x = 0, y = 0;
-		auto vel = 10;
-		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_D)) {
-			x = vel;
+		condition_variable cv;
+		mutex mtx;
+		void Init(int xx, int xy, int xw, int xh, HWND hwnd) {
+			parent = hwnd;
+			x = xx, y = xy, w = xw, h = xh;
 		}
-		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_A)) {
-			x = -vel;
-		}
-		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_W)) {
-			y = vel;
-		}
-		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
-			y = -vel;
-		}
-		actor->SetVel(d_vel(x, y));
-	});
+	};
+	auto xdp = new data_pack;
 
-	/*actor.AddFrameEvent([](void *self) {
-		Actor *actor = (Actor *)self;
-		actor->y_++;		
-	});*/
+	auto xfunc = [](data_pack *xdp) {
+		xdp->xwx = Game::Instance();
+		auto wx = xdp->xwx;
+		wx->Create(width, height);
 
-	wx->Run();
+		auto scene = &xdp->xscene;
+		auto layer = &xdp->xlayer;
+
+		wx->AddSub(scene);
+		scene->AddSub(layer);
+		scene->SetPostion(0, 0, false);
+		scene->SetSize(width, height);
+		layer->SetPostion(0, 0, false);
+		layer->SetSize(width, height);
+
+		MainCamera::Instance()->SetPostion(0, 0, false);
+		MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
+		MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
+
+		wx->Run();
+
+		delete xdp;
+	};
+
+	auto th = new thread(xfunc, xdp);
+	th->detach();
+
+	Sleep(500);
+
+	auto asstpath = "D:\\P\\game-workplace\\first-arpg\\asset";
+	auto mod = read_file("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
+	ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer);
+
+	system("pause");
 }
+//void main() {
+//	auto wx = Game::Instance();
+//	wx->Create(width, height);
+//
+//	Scene scene;
+//	Layer layer;
+//
+//	wx->AddSub(&scene);
+//	scene.AddSub(&layer);
+//	scene.SetPostion(0, 0, false);
+//	scene.SetSize(width, height);
+//	layer.SetPostion(0, 0, false);
+//	layer.SetSize(width, height);
+//
+//	MainCamera::Instance()->SetPostion(0, 0, false);
+//	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
+//	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
+//
+//	Actor actor(SampleFunc);
+//	AddActor(layer, actor, 5, 5, 50, 40);
+//
+//	Actor second(SampleFunc);
+//	AddActor(layer, second, 55, 55, 50, 40);
+//
+//	Actor limit_bottom;
+//	AddActorWithoutTexture(layer, limit_bottom, 0, 0, width, 1);
+//
+//	Actor limit_top;
+//	AddActorWithoutTexture(layer, limit_top, 0, height, width, 1);
+//
+//	Actor limit_left;
+//	AddActorWithoutTexture(layer, limit_left, 0, 0, 1, height);
+//
+//	Actor limit_right;
+//	AddActorWithoutTexture(layer, limit_right, width-1, 0, 1, height);
+//
+//	bx2Collision<Actor> collision;
+//	MainWorld::Instance()->World()->SetContactListener(&collision);
+//	
+//	layer.CameraFollow(0, &limit_bottom, false);
+//
+//	actor.AddFrameEvent([](void *self) {
+//		Actor *actor = (Actor *)self;
+//		auto x = 0, y = 0;
+//		auto vel = 10;
+//		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_D)) {
+//			x = vel;
+//		}
+//		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_A)) {
+//			x = -vel;
+//		}
+//		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_W)) {
+//			y = vel;
+//		}
+//		if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
+//			y = -vel;
+//		}
+//		actor->SetVel(d_vel(x, y));
+//	});
+//
+//	/*actor.AddFrameEvent([](void *self) {
+//		Actor *actor = (Actor *)self;
+//		actor->y_++;		
+//	});*/
+//
+//	wx->Run();
+//}

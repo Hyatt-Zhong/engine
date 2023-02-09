@@ -162,13 +162,13 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 		virtual void Uninit() {}
 
-		void AddSub(S* sub) {
+		void AddSub(S *sub) {
 			sub->SetParent((S::Parent*)this);
 			sub->camera_ = camera_;
 			sub->world_ = world_;
 			sub_.push_back(sub);
 		}
-		void DeleteSub(S* sub) { 
+		virtual void DeleteSub(S* sub) { 
 			for (auto it = sub_.begin(); it != sub_.end();) {
 				if (*it == sub) {
 					it = sub_.erase(it);
@@ -338,6 +338,8 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void OnClick(const int &x, const int &y);
 		virtual void HandleClick(const int &x, const int &y);
 		void CameraFollow(const int &delay, Actor *x, bool center = true);
+		void DeleteSub(Actor *sub) override;
+		void RelateSub(Actor *sub);
 	protected:
 	private:
 	};
