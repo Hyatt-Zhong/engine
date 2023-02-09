@@ -83,7 +83,7 @@ void main() {
 
 	auto asstpath = "D:\\P\\game-workplace\\first-arpg\\asset";
 	auto mod = read_file("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
-	ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer);
+	ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
 
 	system("pause");
 }

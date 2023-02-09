@@ -218,13 +218,14 @@ namespace ns_sdl_winx {
 
 namespace ns_sdl_img {
 using namespace std;
+template<typename T>
 class Animation {
 	using seq = vector<tuple<string, SDL_Texture *, int>>;
 	using node = tuple<SDL_Texture *, int, int>;
 
 public:
-	Animation(renderer *r, tuple<string, SDL_Texture *, int>& first)
-		: r_(r), tick_(0) {
+	Animation(renderer *r, tuple<string, SDL_Texture *, int>& first, T* parent)
+		: r_(r), tick_(0),parent_(parent) {
 		ts_.push_back(first);
 		LoadAsset();
 	}
@@ -238,7 +239,8 @@ public:
 			Next();
 		}
 		SDL_Rect rt = {x, y, w, h};
-		SDL_RenderCopy(r_, get<0>(curr_), NULL, &rt);
+		SDL_Point pt = {w / 2, h / 2};
+		SDL_RenderCopyEx(r_, get<0>(curr_), NULL, &rt, parent_->angle_, &pt, SDL_FLIP_NONE);
 	}
 
 	void LoadAsset()
@@ -275,6 +277,7 @@ private:
 	node curr_;
 	node next_;
 	renderer *r_;
+	T *parent_;
 };
 
 class AssetMgr : public single<AssetMgr> {

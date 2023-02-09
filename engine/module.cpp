@@ -50,15 +50,17 @@ Actor *CreateMod(Game *wx, const string &asstpath,
 
 	auto mod = new Actor(SampleFunc);
 	layer->AddSub(mod);
-	bool center = true;
-	if (center) {
-		x -= w / 2, y -= h / 2;
-	}
+
 	if (isTest) {
 		x = y = 0;
 
 		x += layer->w_ / 2;
 		y += layer->h_ / 2;
+	}
+
+	bool center = true;
+	if (center) {
+		x -= w / 2, y -= h / 2;
 	}
 	mod->SetPostion(x, y);
 	mod->SetSize(w, h);
@@ -91,6 +93,9 @@ Actor *CreateMod(Game *wx, const string &asstpath,
 			}
 			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
 				y = -vel;
+			}
+			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_R)) {
+				actor->angle_++;
 			}
 			actor->SetVel(d_vel(x, y));
 		});

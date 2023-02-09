@@ -124,8 +124,9 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	class Temp
 	{
 	public:
+		using ThisClass = Temp<T, S>;
 		Temp() : curr_anim_(nullptr)
-			, x_(0), y_(0), w_(0), h_(0) {}
+			, x_(0), y_(0), w_(0), h_(0),angle_(0) {}
 		~Temp() {}
 		virtual void Init() {}
 		virtual void LoadAsset() {
@@ -208,7 +209,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			else {
 				tuple<string, SDL_Texture*, int> tp = { path,texture,dt };
 				auto rr = ns_sdl_img::AssetMgr::Instance()->GetRenderer();
-				ns_sdl_img::Animation ani(rr, tp);
+				ns_sdl_img::Animation<ThisClass> ani(rr, tp, this);
 				anims_.insert(make_pair(state, ani));
 			}
 		}
@@ -259,8 +260,10 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		int w_, h_;
 		string name_;
 
-		map<int, ns_sdl_img::Animation> anims_;
-		ns_sdl_img::Animation* curr_anim_;
+		map<int, ns_sdl_img::Animation<ThisClass>> anims_;
+		ns_sdl_img::Animation<ThisClass> *curr_anim_;
+		double angle_;
+
 		Camera* camera_;
 		ns_box2d::bx2World *world_;
 		vector<frame_event> frame_events_;
@@ -419,6 +422,14 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		bool is_click_;
 		d_vel vel_;
 		d_vel bx2_vel_;
+	private:
+	};
+
+	class Ai
+	{
+	public:
+		virtual void Drive(Actor *actor) = 0;
+	protected:
 	private:
 	};
 

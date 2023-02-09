@@ -111,15 +111,13 @@ void bx2DbgDraw::b2point2sdlpoint(SDL_Point *sp, const b2Vec2 *bp, int count)
 }
 
 b2Body *bx2World::CreateBody(Actor *actor) {
+	if (actor->create_body_) {
+		return actor->create_body_(actor);
+	}
 
 	auto info = actor->GetInfo();
 	info.div(nx);
 	auto [x, y, w, h] = info;
-
-	if (actor->create_body_)
-	{
-		return actor->create_body_(actor);
-	}
 
 	b2BodyDef bodyInfo;
 	bodyInfo.position.Set(x + w / 2, y + h / 2);

@@ -201,7 +201,7 @@ int TestModule(char* asstpath, char* mod) {
 		xdp->xmod = nullptr;
 	}
 	if (xdp) {
-		xdp->xmod = CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer);
+		xdp->xmod = CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
 	}
 	return 0;
 }
