@@ -4,9 +4,11 @@
 #include "sdl_windx.h"
 #include "bx2-engine.h"
 #include "data-def.h"
-
+#include "ai-base.h"
 namespace ns_engine {
 using namespace std;
+using namespace ns_ai;
+
 namespace ns_params {
 static float render_distance_ = 3 / 2;//3个视野内
 static float active_distance_ = 0.75;//1个多一点视野内
@@ -351,7 +353,8 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		, public Base<Layer>
 	{
 	public:
-		Actor() : is_click_(false), is_destroy_(false), vel_(0, 0), create_body_(nullptr) {}
+		Actor() : is_click_(false), is_destroy_(false), vel_(0, 0), create_body_(nullptr),
+			type_(0), goaltype_(0) {}
 		bool Active() {
 			auto leadrol = Game::Instance()->Leadrol();
 			auto x = leadrol->x_;
@@ -373,6 +376,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void Update(const unsigned &dt) {
 			auto &[x, y] = vel_;
 			x_ += x, y_ += y;
+			AiDrive();
 			Temp<Actor, Actor>::Update(dt);
 			if (is_destroy_)
 			{
@@ -417,19 +421,47 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void SetCreateBodyFunc(CreateBodyFunc func) { create_body_ = func; }
 		CreateBodyFunc create_body_;
 
+	public:
+		void PushAi(Ai* ai) { ai_chain_.chain.push_back(ai);
+		}
+		void SwitchAi() {
+			if (!ai_chain_.alive)
+			{
+				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : ai_chain_.chain[0];
+				return;
+			}
+			auto x = find(ai_chain_.chain.begin(), ai_chain_.chain.end(), ai_chain_.alive);
+			x++;
+
+			if (x == ai_chain_.chain.end()) {
+				x = ai_chain_.chain.begin();
+			}
+			ai_chain_.alive = *x;
+		}
+
+		
 	protected:
 		bool is_destroy_;
 		bool is_click_;
 		d_vel vel_;
 		d_vel bx2_vel_;
-	private:
-	};
+		
+		AiChain ai_chain_;
 
-	class Ai
-	{
-	public:
-		virtual void Drive(Actor *actor) = 0;
 	protected:
+		void AiDrive() { 
+			if (!ai_chain_.alive) {
+				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : ai_chain_.chain[0];
+			}
+			if (ai_chain_.alive && ai_chain_.alive->Drive(this)) {
+				SwitchAi();
+			}
+		}
+
+	public:
+		int type_;//本身类型
+		int goaltype_;//敌对的类型
+
 	private:
 	};
 

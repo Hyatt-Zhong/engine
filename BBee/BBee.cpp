@@ -1,6 +1,7 @@
 #include <engine.h>
 #include <thread>
 #include <module.h>
+#include <ai.h>
 
 using namespace ns_engine;
 using namespace ns_box2d;
@@ -67,6 +68,28 @@ void main() {
 		layer->SetPostion(0, 0, false);
 		layer->SetSize(width, height);
 
+		Actor enemy(SampleFunc);
+		AddActor(*layer, enemy, 200, 100, 50, 40);
+		Follow fl;
+		MoveLeft ml;
+		MoveRight mr;
+		MoveUp mu;
+		MoveDown md;
+		enemy.PushAi(&ml);
+		enemy.PushAi(&mr);
+		enemy.PushAi(&mu);
+		enemy.PushAi(&md);
+		//enemy.PushAi(&fl);
+		enemy.goaltype_ = 1;
+		enemy.type_ = 2;
+
+		Actor enemy1(SampleFunc);
+		AddActor(*layer, enemy1, 400, 5, 50, 40);
+		Follow flx;
+		enemy1.PushAi(&flx);
+		enemy1.goaltype_ = 1;
+		enemy1.type_ = 2;
+
 		MainCamera::Instance()->SetPostion(0, 0, false);
 		MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
 		MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
@@ -83,7 +106,8 @@ void main() {
 
 	auto asstpath = "D:\\P\\game-workplace\\first-arpg\\asset";
 	auto mod = read_file("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
-	ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
+	auto role = ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
+	role->type_ = 1;
 
 	system("pause");
 }

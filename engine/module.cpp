@@ -97,6 +97,8 @@ Actor *CreateMod(Game *wx, const string &asstpath,
 			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_R)) {
 				actor->angle_++;
 			}
+			auto xxx = actor->world_->GetBody(actor)->GetPosition();
+			//print(actor->x_, actor->y_, xxx.x, xxx.y);
 			actor->SetVel(d_vel(x, y));
 		});
 	}
