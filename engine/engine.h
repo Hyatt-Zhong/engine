@@ -148,6 +148,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	};
 
 	using frame_event = function<void(void*)>;
+	//using frame_event = void(*)(void*);
 	template<typename T, typename S>
 	class Temp
 	{
@@ -167,6 +168,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 		virtual void Update(const unsigned& dt) {
 			FrameEvent();
+			FrameEventOnce();
 			ChangeState();
 
 			if (curr_anim_) {
@@ -191,13 +193,13 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 		virtual void Uninit() {}
 
-		void AddSub(S *sub) {
+		void AddSub(S* sub) {
 			sub->SetParent((S::Parent*)this);
 			sub->camera_ = camera_;
 			sub->world_ = world_;
 			sub_.push_back(sub);
 		}
-		virtual void DeleteSub(S* sub) { 
+		void DeleteSub(S* sub) { 
 			for (auto it = sub_.begin(); it != sub_.end();) {
 				if (*it == sub) {
 					it = sub_.erase(it);
@@ -271,6 +273,14 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			frame_events_.push_back(fe);
 		}
 
+		void FrameEventOnce() {
+			for (auto &it : frame_events_once_) {
+				it(this);
+			}
+			frame_events_once_.swap(vector<frame_event>());
+		}
+		void AddFrameEventOnce(const frame_event &fe) { frame_events_once_.push_back(fe); }
+
 		pair<int, int> GetCenter() {
 			return {x_ + w_ / 2, y_ + h_ / 2};
 		}
@@ -295,6 +305,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		Camera* camera_;
 		ns_box2d::bx2World *world_;
 		vector<frame_event> frame_events_;
+		vector<frame_event> frame_events_once_;
 	};
 
 	template<typename T>
@@ -369,7 +380,6 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void OnClick(const int &x, const int &y);
 		virtual void HandleClick(const int &x, const int &y);
 		void CameraFollow(const int &delay, Actor *x, bool center = true);
-		void DeleteSub(Actor *sub) override;
 		void RelateSub(Actor *sub);
 	protected:
 	private:
@@ -404,10 +414,8 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			x_ += x, y_ += y;
 			AiDrive();
 			Temp<Actor, Actor>::Update(dt);
-			if (is_destroy_)
-			{
-				world_->Destroy(this);
-				parent_->DeleteSub(this);
+			if (is_destroy_) {
+				DestroyDirectly();
 			}
 		}
 
@@ -439,6 +447,13 @@ static float active_distance_ = 0.75;//1个多一点视野内
 
 		virtual void OnCollision(Actor *actor) {
 			print("collision with", actor);
+		}
+
+		void Destroy() { is_destroy_ = true; }
+		//直接销毁，只能在主线程外部使用，内部应使用Destroy()设置销毁标志
+		void DestroyDirectly() {
+			world_->Destroy(this);
+			parent_->DeleteSub(this);
 		}
 	public:
 		using CreateBodyFunc = b2Body* (*)(Actor*);
@@ -488,14 +503,6 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	public:
 		ns_module::mod_type type_ = ns_module::mod_type::none; //本身类型
 		ns_module::typeset goaltype_ = 0;                      //敌对的类型
-	private:
-	};
-
-	class xActor : public Actor
-	{
-	public:
-		using Actor::is_destroy_;
-	protected:
 	private:
 	};
 	

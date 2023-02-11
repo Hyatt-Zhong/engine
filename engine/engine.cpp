@@ -28,17 +28,9 @@ void Layer::CameraFollow(const int &delay, Actor *actor, bool center) {
 		}
 	});
 }
-
-void Layer::DeleteSub(Actor* sub) {
-	Temp<Layer, Actor>::DeleteSub(sub);
-	world_->Destroy(sub);
-}
-
 void Layer::RelateSub(Actor *sub) {
 	if (world_) {
 		world_->RelateWorld(sub);
 	}
 }
-
-
 }

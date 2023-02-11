@@ -196,9 +196,7 @@ void* SubWindow(int x, int y, int w, int h, HWND parent)
 int TestModule(char* asstpath, char* mod) {
 	if (xdp && xdp->xmod) {
 		lock_guard<mutex> lk(xdp->xwx->mtx_);
-		xdp->xlayer.DeleteSub(xdp->xmod);
-		delete xdp->xmod;
-		xdp->xmod = nullptr;
+		xdp->xmod->DestroyDirectly();
 	}
 	if (xdp) {
 		xdp->xmod = CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);

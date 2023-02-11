@@ -5,13 +5,13 @@ using namespace ns_engine;
 using namespace ns_box2d;
 using namespace placeholders;
 
-class bullet:public xActor
+class bullet:public Actor
 {
 public:
 	void OnCollision(Actor *actor) {
 		print("collision with", actor);
 		if (actor) {
-			((xActor*)actor)->is_destroy_ = true;
+			actor->Destroy();
 		}
 	}
 
