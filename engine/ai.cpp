@@ -7,13 +7,17 @@ namespace ns_ai {
 bool Scout::ReportFixture(b2Fixture *fixture) {
 	auto body = fixture->GetBody();
 	auto actor = (Actor *)body->GetUserData().pointer;
-	if (actor->type_ == goal_type_) {
-		result_ = actor;
-		return false;
+	if (search_one_)
+	{
+		if (goal_type_.test(actor->type_)) {
+			result_ = actor;
+			return false;
+		}
+	} else {
 	}
 	return true;
 }
-Actor *Scout::Search(const int &range, Actor *point, int type) {
+Actor *Scout::Search(const int &range, Actor *point, typeset type) {
 	auto b2_pos = point->world_->GetBody(point)->GetPosition();
 	auto x = b2_pos.x;
 	auto y = b2_pos.y;
@@ -24,13 +28,14 @@ Actor *Scout::Search(const int &range, Actor *point, int type) {
 
 	result_ = nullptr;
 	goal_type_ = type;
+	search_one_ = true;
 	point->world_->World()->QueryAABB(this, aabb);
 	return result_;
 }
 
 bool Follow::Drive(Actor *actor) {
 	if (point == nullptr) {
-		point = Search(10, actor, actor->goaltype_);
+		point = Search(range_, actor, actor->goaltype_);
 	}
 	if (point) {
 		d_vel v(point->x_ - actor->x_, point->y_ - actor->y_);

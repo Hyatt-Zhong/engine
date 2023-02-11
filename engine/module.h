@@ -8,28 +8,6 @@ namespace ns_module {
 	using namespace ns_engine;
 	using namespace ns_box2d;
 
-#define MTYPE_BEG(SP) enum SP {
-#define MTYPE(TYPE) TYPE,
-#define MTYPE_END };
-		
-#define MTYPE_MAP_BEG(SM) map<string, int> SM = {
-#define MTYPE_MAP(TYPE) {#TYPE, TYPE},
-#define MTYPE_MAP_END };
-
-MTYPE_BEG(mod_type)
-	MTYPE(building)
-	MTYPE(enemy)
-	MTYPE(npc)
-	MTYPE(role)
-	MTYPE(tree)
-	MTYPE(weapon)
-	MTYPE(bullet)
-	MTYPE(skill)
-	MTYPE(effect)
-MTYPE_END
-
-
-
 enum generate_type {
 	common,
 	hide_in_other,//藏在某处，然后跳出来

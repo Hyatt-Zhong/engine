@@ -5,6 +5,32 @@
 #include "bx2-engine.h"
 #include "data-def.h"
 #include "ai-base.h"
+
+#define MTYPE_BEG(SP) enum SP {
+#define MTYPE(TYPE) TYPE,
+#define MTYPE_END };
+		
+#define MTYPE_MAP_BEG(SM) map<string, int> SM = {
+#define MTYPE_MAP(TYPE) {#TYPE, TYPE},
+#define MTYPE_MAP_END };
+
+namespace ns_module {
+	using namespace std;
+MTYPE_BEG(mod_type)
+	MTYPE(none)
+	MTYPE(building)
+	MTYPE(enemy)
+	MTYPE(npc)
+	MTYPE(role)
+	MTYPE(tree)
+	MTYPE(weapon)
+	MTYPE(bullet)
+	MTYPE(skill)
+	MTYPE(effect)
+MTYPE_END
+
+using typeset = bitset<32>;
+}
 namespace ns_engine {
 using namespace std;
 using namespace ns_ai;
@@ -354,7 +380,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	{
 	public:
 		Actor() : is_click_(false), is_destroy_(false), vel_(0, 0), create_body_(nullptr),
-			type_(0), goaltype_(0) {}
+			type_(ns_module::mod_type::none), goaltype_(0) {}
 		bool Active() {
 			auto leadrol = Game::Instance()->Leadrol();
 			auto x = leadrol->x_;
@@ -425,18 +451,19 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		void PushAi(Ai* ai) { ai_chain_.chain.push_back(ai);
 		}
 		void SwitchAi() {
-			if (!ai_chain_.alive)
-			{
+			if (!ai_chain_.alive) {
 				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : ai_chain_.chain[0];
+				ai_chain_.index = 0;
 				return;
 			}
-			auto x = find(ai_chain_.chain.begin(), ai_chain_.chain.end(), ai_chain_.alive);
-			x++;
+			ai_chain_.index++;
 
-			if (x == ai_chain_.chain.end()) {
-				x = ai_chain_.chain.begin();
+			if (ai_chain_.index >= ai_chain_.chain.size()) {
+				ai_chain_.alive = ai_chain_.chain[0];
+				ai_chain_.index = 0;
+			} else {
+				ai_chain_.alive = ai_chain_.chain[ai_chain_.index];
 			}
-			ai_chain_.alive = *x;
 		}
 
 		
@@ -459,9 +486,8 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 
 	public:
-		int type_;//本身类型
-		int goaltype_;//敌对的类型
-
+		ns_module::mod_type type_ = ns_module::mod_type::none; //本身类型
+		ns_module::typeset goaltype_ = 0;                      //敌对的类型
 	private:
 	};
 

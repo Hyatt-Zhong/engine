@@ -11,6 +11,7 @@
 #include <queue>
 #include <sstream>
 #include <fstream>
+#include <bitset>
 
 #define SAFE_DELETE(p)           do { delete (p); (p) = nullptr; } while(0)
 #define SAFE_DELETE_ARRAY(p)     do { if(p) { delete[] (p); (p) = nullptr; } } while(0)

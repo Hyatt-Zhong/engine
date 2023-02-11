@@ -21,8 +21,9 @@ private:
 struct AiChain {
 	vector<Ai *> chain;
 	Ai *alive;
+	unsigned index;
 
-	AiChain() : alive(nullptr) {}
+	AiChain() : alive(nullptr),index(0) {}
 };
 
 };

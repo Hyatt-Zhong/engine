@@ -69,26 +69,32 @@ void main() {
 		layer->SetSize(width, height);
 
 		Actor enemy(SampleFunc);
-		AddActor(*layer, enemy, 200, 100, 50, 40);
+		AddActor(*layer, enemy, 100, 100, 50, 40);
 		Follow fl;
-		MoveLeft ml;
-		MoveRight mr;
+		MoveLeft ml(4.f);
+		MoveRight mr(4.f);
 		MoveUp mu;
 		MoveDown md;
 		enemy.PushAi(&ml);
 		enemy.PushAi(&mr);
+		enemy.PushAi(&mr);
+		enemy.PushAi(&ml);
 		enemy.PushAi(&mu);
 		enemy.PushAi(&md);
+		enemy.PushAi(&md);
+		enemy.PushAi(&mu);
 		//enemy.PushAi(&fl);
-		enemy.goaltype_ = 1;
-		enemy.type_ = 2;
+		enemy.goaltype_.set(ns_module::mod_type::role);
+		enemy.type_ = ns_module::mod_type::enemy;
 
 		Actor enemy1(SampleFunc);
 		AddActor(*layer, enemy1, 400, 5, 50, 40);
 		Follow flx;
+		Clockwise cw(200);
+		enemy1.PushAi(&cw);
 		enemy1.PushAi(&flx);
-		enemy1.goaltype_ = 1;
-		enemy1.type_ = 2;
+		enemy1.goaltype_.set(ns_module::mod_type::role);
+		enemy1.type_ = ns_module::mod_type::enemy;
 
 		MainCamera::Instance()->SetPostion(0, 0, false);
 		MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
@@ -107,7 +113,7 @@ void main() {
 	auto asstpath = "D:\\P\\game-workplace\\first-arpg\\asset";
 	auto mod = read_file("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
 	auto role = ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
-	role->type_ = 1;
+	role->type_ = ns_module::mod_type::role;
 
 	system("pause");
 }
