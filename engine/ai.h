@@ -18,6 +18,7 @@ class Scout : public b2QueryCallback {
 public:
 	bool ReportFixture(b2Fixture *fixture);
 	Actor *Search(const int &range, Actor *point, typeset type);
+	vector<Actor *> SearchMult(const int &range, Actor *point, typeset type, int count = 4);
 	void SetRange(int range) { range_ = range; }
 
 protected:
@@ -27,6 +28,8 @@ private:
 	Actor *result_;
 	typeset goal_type_;
 	bool search_one_ = true;
+	int search_count = 4;
+	vector<Actor *> results_;
 };
 
 class Follow : public Ai, public Scout {
@@ -38,6 +41,7 @@ protected:
 private:
 	Actor *point = nullptr;
 };
+
 
 template<char T>
 class Move:public Ai
@@ -160,5 +164,49 @@ private:
 };
 using Clockwise = Patrol<'T'>;
 using Counterclockwise = Patrol<'F'>;
+
+const static float distance = 123.f;
+const static float distance_dt = 30.f;
+const static float velocity_big = 6.f;
+const static float velocity_small = 3.f;
+class Circle : public Ai, public Scout {
+public:
+	Circle(int n, float dis) {
+		distance_min_ = dis - distance_dt;
+		distance_max_ = dis + distance_dt;
+		n_ = n;
+		dis_ = dis;
+	}
+	Circle(int n) {
+		n_ = n;
+	}
+	Circle(float dis) {
+		distance_min_ = dis - distance_dt;
+		distance_max_ = dis + distance_dt;
+		dis_ = dis;
+	}
+	Circle() {}
+	bool Drive(Actor *actor);
+	void SetPoint(Actor *point_) { point = point_; }
+	void SetClockwise(bool ck) { ck_ = ck; }
+	//AI_NAME("Follow")
+protected:
+private:
+	Actor *point = nullptr;
+	int n_ = 24;
+	float distance_min_ = distance - distance_dt;
+	float distance_max_ = distance + distance_dt;
+	float dis_ = distance;
+	bool ck_ = true;
+};
+
+class Line
+{
+public:
+	Line() {}
+
+protected:
+private:
+};
 };
 #endif

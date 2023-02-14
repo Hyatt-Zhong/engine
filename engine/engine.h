@@ -4,15 +4,8 @@
 #include "sdl_windx.h"
 #include "bx2-engine.h"
 #include "data-def.h"
+#include "macro-def.h"
 #include "ai-base.h"
-
-#define MTYPE_BEG(SP) enum SP {
-#define MTYPE(TYPE) TYPE,
-#define MTYPE_END };
-		
-#define MTYPE_MAP_BEG(SM) map<string, int> SM = {
-#define MTYPE_MAP(TYPE) {#TYPE, TYPE},
-#define MTYPE_MAP_END };
 
 namespace ns_module {
 	using namespace std;
@@ -31,9 +24,14 @@ MTYPE_END
 
 using typeset = bitset<32>;
 }
+
+namespace ns_map {
+class Map;
+}
 namespace ns_engine {
 using namespace std;
 using namespace ns_ai;
+using namespace placeholders;
 
 namespace ns_params {
 static float render_distance_ = 3 / 2;//3个视野内
@@ -157,7 +155,6 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		Temp() : curr_anim_(nullptr)
 			, x_(0), y_(0), w_(0), h_(0),angle_(0) {}
 		~Temp() {}
-		virtual void Init() {}
 		virtual void LoadAsset() {
 			for (auto& it : anims_) {
 				it.second.LoadAsset();
@@ -171,12 +168,18 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			FrameEventOnce();
 			ChangeState();
 
-			if (curr_anim_) {
+			{
 				int x, y;
 				if (camera_->Catch(this, x, y)) {
-					curr_anim_->Update(dt, x, y, w_, h_);
+					if (curr_anim_) {
+						curr_anim_->Update(dt, x, y, w_, h_);
+					}
+					if (InRange()) {
+						OnHover(x, y, w_, h_);
+					}
 				}
 			}
+			
 			Sort();
 			for (auto& it : sub_) {
 				if (it->IsAlive()) {
@@ -191,9 +194,8 @@ static float active_distance_ = 0.75;//1个多一点视野内
 				curr_anim_ = &it->second;
 			}
 		}
-		virtual void Uninit() {}
 
-		void AddSub(S* sub) {
+		virtual void AddSub(S *sub) {
 			sub->SetParent((S::Parent*)this);
 			sub->camera_ = camera_;
 			sub->world_ = world_;
@@ -228,8 +230,9 @@ static float active_distance_ = 0.75;//1个多一点视野内
 				return a->zorder_ < b->zorder_; });
 		}
 
-		void AddAssetAnimation(const string& path, const int& dt, const int& state)
+		void AddAssetAnimation(const string& path_, const int& dt, const int& state)
 		{
+			auto path = Game::Instance()->GetPic(path_);
 			auto texture = ns_sdl_img::AssetMgr::Instance()->GetTexture(path);
 			auto it = anims_.find(state);
 			if (it != anims_.end()) {
@@ -264,6 +267,14 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			name_ = name;
 		}
 
+		S *FindSub(const string &name) {
+			auto it = find_if(sub_.begin(), sub_.end(), [name](auto &&sub) { return sub->name_ == name; });
+			if (it != sub_.end()) {
+				return *it;
+			}
+			return nullptr;
+		}
+
 		void FrameEvent() {
 			for (auto& it:frame_events_){
 				it(this);
@@ -285,10 +296,36 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			return {x_ + w_ / 2, y_ + h_ / 2};
 		}
 
-		virtual bool IsAlive() { return true; }
+		virtual bool IsAlive() { return alive_; }
+		void SetAlive(bool alive) { alive_ = alive; }
+		void InitAlive(bool alive) {
+			alive_ = alive;
+			init_alive_ = alive;
+		}
 
 		SizeInfo GetInfo() {
 			return SizeInfo(x_, y_, w_, h_);
+		}
+
+		bool InRange(const int &x, const int &y) {
+			if (x_ < x && y_ < y && x_ + w_ > x && y_ + h_ > y) {
+				in_range_ = true;
+			} else {
+				in_range_ = false;
+			}
+			return in_range_;
+		}
+		bool InRange() { return in_range_; }
+
+		virtual void OnHover(const int &x, const int &y, const int &w, const int &h) {}
+
+		virtual void Reset() {
+			angle_ = 0;
+			in_range_ = false;
+			alive_ = init_alive_;
+			for (auto &it : sub_) {
+				it->Reset();
+			}
 		}
 
 		vector<S*> sub_;
@@ -302,10 +339,17 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		ns_sdl_img::Animation<ThisClass> *curr_anim_;
 		double angle_;
 
-		Camera* camera_;
-		ns_box2d::bx2World *world_;
+		Camera *camera_ = nullptr;
+		ns_box2d::bx2World *world_ = nullptr;
 		vector<frame_event> frame_events_;
 		vector<frame_event> frame_events_once_;
+
+	private:
+		bool alive_ = true;
+		bool init_alive_ = true;
+
+	private:
+		bool in_range_ = false;
 	};
 
 	template<typename T>
@@ -325,7 +369,10 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		public single<Game>
 	{
 	public:
+		Game() : cur_scene_(nullptr), leadrol_(nullptr) {}
+	public:
 		void Create(const int& w, const int& h, const void *wind = nullptr) {
+			w_ = w, h_ = h;
 			windowx::WinInit();
 			windowx::Create(w, h, wind);
 			camera_ = MainCamera::Instance();
@@ -334,18 +381,19 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			camera_->SetViewport(w, h);
 			ns_sdl_img::AssetMgr::Instance()->SetRenderer(render_);
 
-			world_ = ns_box2d::MainWorld::Instance();
-			AddWorld(ns_box2d::MainWorld::Instance());
+			//world_ = ns_box2d::MainWorld::Instance();
+			//AddWorld(ns_box2d::MainWorld::Instance());
 		}
 
 		void Draw(const unsigned& dt) {
-			for (auto& it:worlds_){
+			/*for (auto& it:worlds_){
 				it->Update(dt);
-			}
+			}*/
 			Update(dt);
 		}
 
-		void AddWorld(ns_box2d::bx2World *w) { worlds_.push_back(w); }
+		//void AddWorld(ns_box2d::bx2World *w) { worlds_.push_back(w); }
+		bool IsAlive() { return true; }
 
 		void Destroy() { 
 			SAFE_DELETE(camera_);
@@ -354,42 +402,76 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		Actor *Leadrol() { return leadrol_; }
 		void SetLeadrol(Actor *rol) { leadrol_ = rol; }
 
+		void SwitchScene(const string &name);
+		void ShowLayer(const string &name, bool show, bool monopoly = true);
+
+		void OnNotice(const string &layer, const string &actor, void *data);
+
+		void SetPath(const string &path) {
+			music_path_ = path + "\\asset\\music\\";
+			pic_path_ = path + "\\asset\\pic\\";
+			module_path_ = path + "\\module\\";
+			map_path_ = path + "\\map\\";
+		}
+
+		Scene* GetCurScene() {
+			auto it = find_if(sub_.begin(), sub_.end(), [](auto &&xx) { return xx->IsAlive(); });
+			cur_scene_ = it != sub_.end() ? *it : nullptr;
+			return cur_scene_;
+		}
+
+		string GetPic(const string &path) { return pic_path_ + path; }
+
+	public:
+		static void ListenMouse();
+		static void ListenKey();
+
 	protected:
+		Scene *cur_scene_;
 	private:
 		vector<ns_box2d::bx2World *> worlds_;
 		Actor *leadrol_;
+		string music_path_;
+		string pic_path_;
+		string module_path_;
+		string map_path_;
 	};
 
 	class Layer;
-	class Scene :public Temp<Scene, Layer>
-		, public Base<Game>
-	{
+	class Scene : public Temp<Scene, Layer>, public Base<Game>, public ns_sdl_winx::Input<Scene> {
 	public:
-		Scene() {}
+		Scene() { InitAlive(false); }
+		Scene(const string &name) {
+			name_ = name;
+			InitAlive(false);
+		}
+		void ShowLayer(const string &name, bool show, bool monopoly = true);
+
 	protected:
-	private:
+	private: 
+		
 	};
 
 	class Actor;
-	class Layer :public Temp<Layer, Actor>
-		, public Base<Scene>
-	{
+	class Layer : public Temp<Layer, Actor>, public Base<Scene>, public ns_sdl_winx::Input<Scene> {
 	public:
 		Layer() {}
+		Layer(const string &name) { name_ = name; }
 
-		void OnClick(const int &x, const int &y);
-		virtual void HandleClick(const int &x, const int &y);
 		void CameraFollow(const int &delay, Actor *x, bool center = true);
 		void RelateSub(Actor *sub);
+		bool Exist(Actor *actor);
+		void Update(const unsigned &dt);
+		void SetMap(ns_map::Map *map);
+
 	protected:
+		ns_map::Map *map_ = nullptr;
 	private:
 	};
 
-	class Actor :public Temp<Actor, Actor>
-		, public Base<Layer>
-	{
+	class Actor : public Temp<Actor, Actor>, public Base<Layer>, public ns_sdl_winx::Input<Scene> {
 	public:
-		Actor() : is_click_(false), is_destroy_(false), vel_(0, 0), create_body_(nullptr),
+		Actor() : is_destroy_(false), vel_(0, 0), create_body_(nullptr),
 			type_(ns_module::mod_type::none), goaltype_(0) {}
 		bool Active() {
 			auto leadrol = Game::Instance()->Leadrol();
@@ -434,16 +516,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			}
 		}
 
-		bool OnClick(const int &x, const int &y) {
-			if (x_ < x && y_ < y && x_ + w_ > x && y_ + h_ > y) {
-				is_click_ = true;
-			} else {
-				is_click_ = false;
-			}
-			return is_click_;
-		}
-
-		bool IsClick() { return is_click_; }
+		virtual void OnNotice(void* data) {}
 
 		virtual void OnCollision(Actor *actor) {
 			print("collision with", actor);
@@ -457,13 +530,14 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		}
 	public:
 		using CreateBodyFunc = b2Body* (*)(Actor*);
-		Actor(const CreateBodyFunc &create_body) : is_click_(false), is_destroy_(false),
+		Actor(const CreateBodyFunc &create_body) : is_destroy_(false),
 			vel_(0, 0), create_body_(create_body) {}
 		void SetCreateBodyFunc(CreateBodyFunc func) { create_body_ = func; }
 		CreateBodyFunc create_body_;
 
 	public:
 		void PushAi(Ai* ai) { ai_chain_.chain.push_back(ai);
+			ai->SetLayer(parent_);
 		}
 		void SwitchAi() {
 			if (!ai_chain_.alive) {
@@ -484,7 +558,6 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		
 	protected:
 		bool is_destroy_;
-		bool is_click_;
 		d_vel vel_;
 		d_vel bx2_vel_;
 		

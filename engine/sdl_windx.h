@@ -12,11 +12,9 @@ namespace ns_sdl_winx {
 	const unsigned frame_interval = 13;
 	const unsigned key_count = 32;
 
-	/*using key_handle = void(*)();
-	using mouse_handle = void(*)(const int& x, const int& y);
-	using event_handle = void(*)();*/
-	using key_handle = function<void()>;
-	using mouse_handle = function<void(const int& x, const int& y, const Uint8& button)>;
+	using key_handle = function<void(const SDL_Keycode &key, const Uint32 &up_or_dow)>;
+	using key_event = function<void(const SDL_Keycode &key, const Uint32 &up_or_dow, void *data)>;
+	using mouse_handle = function<void(const int& x, const int& y, const Uint8& button, const Uint32 &e_type)>;
 	using event_handle = function<void(const SDL_Event& e)>;
 	class EventHandle :public single<EventHandle>
 	{
@@ -24,29 +22,14 @@ namespace ns_sdl_winx {
 		EventHandle() {
 			key_state_ = SDL_GetKeyboardState(NULL);
 		}
-		void AddKeyUpHandle(SDL_Keycode key, key_handle hdl) {
-			if (key_up_handle_.find(key) == key_up_handle_.end()) {
-				key_up_handle_.insert(make_pair(key, hdl));
-			}
-		}
-		void AddKeyDownHandle(SDL_Keycode key, key_handle hdl) {
-			if (key_down_handle_.find(key) == key_down_handle_.end()) {
-				key_down_handle_.insert(make_pair(key, hdl));
-			}
-		}
-		void AddMouseHandle(Uint32 key, mouse_handle hdl) {
-			if (mouse_handle_.find(key) == mouse_handle_.end()) {
-				mouse_handle_.insert(make_pair(key, hdl));
-			}
-		}
+
 		void AddEventHandle(Uint32 key, event_handle hdl) {
 			if (event_handle_.find(key) == event_handle_.end()) {
 				event_handle_.insert(make_pair(key, hdl));
 			}
 		}
-		void SetMouseLUpHandle(mouse_handle hdl) {
-			mouse_left_up_handle_ = hdl;
-		}
+		void SetMouseHandle(mouse_handle hdl) { mhdl = hdl; }
+		void SetKeyHandle(key_handle hdl) { khdl = hdl; }
 
 		bool GetKeyState(const SDL_Scancode &key){
 			return key_state_[key];
@@ -58,83 +41,96 @@ namespace ns_sdl_winx {
 			return SDL_GetMouseState(x, y) & SDL_BUTTON(index);
 		}
 
-		/*bool MonitorKey(const SDL_Keycode& key) {
-			if (key_monitor_.key_pos_.size() >= key_count) {
-				return false;
-			}
-			if (key_monitor_.key_pos_.find(key) !=
-			    key_monitor_.key_pos_.end()) {
-				return false;
-			}
-			key_monitor_.key_pos_.insert(
-				make_pair(key, key_monitor_.key_count_));
-			key_monitor_.key_count_++;
-			return true;
-		}
-		bool GetKeyState(const SDL_Keycode& key) {
-			auto it = key_monitor_.key_pos_.find(key);
-			if (it == key_monitor_.key_pos_.end()) {
-				return false;
-			}
-			auto pos = it->second;
-			return key_monitor_.key_state_[pos];
-		}*/
 		void OnEvent(const SDL_Event& e) {
 			switch (e.type) {
 			case SDL_KEYUP:
-			{
-				auto it = key_up_handle_.find(e.key.keysym.sym);
-				if (it != key_up_handle_.end()) {
-					it->second();
-				}
-			}
-			break;
-			case SDL_KEYDOWN:
-			{
-				auto it = key_down_handle_.find(e.key.keysym.sym);
-				if (it != key_down_handle_.end()) {
-					it->second();
-				}
-			}
-			break;
+			case SDL_KEYDOWN: {
+				khdl(e.key.keysym.sym, e.type);
+			} break;
+			case SDL_MOUSEMOTION:
 			case SDL_MOUSEBUTTONUP:
-			{
-				if (mouse_left_up_handle_) {
-					mouse_left_up_handle_(e.button.x, e.button.y, e.button.button);
-				}
-			}
-			break;
-			default:
-			{
-				auto itor = mouse_handle_.find(e.type);
-				if (itor != mouse_handle_.end()) {
-					itor->second(e.button.x, e.button.y, e.button.button);
-					break;
-				}
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEWHEEL: {
+				mhdl(e.button.x, e.button.y, e.button.button, e.type);
+			} break;
+			default: {
 				auto it = event_handle_.find(e.type);
 				if (it != event_handle_.end()) {
 					it->second(e);
 					break;
 				}
-			}
-			break;
+			} break;
 			}
 		}
+		
 	protected:
 	private:
-		map<SDL_Keycode, key_handle> key_up_handle_;
-		map<SDL_Keycode, key_handle> key_down_handle_;
-		map<Uint32, mouse_handle> mouse_handle_;
+		mouse_handle mhdl;
+		key_handle khdl;
+		
 		map<Uint32, event_handle> event_handle_;
-		mouse_handle mouse_left_up_handle_;
 
 		const Uint8 *key_state_ = nullptr;
-		/*struct KeyMonitor {
-			bitset<key_count> key_state_;
-			map<SDL_Keycode, int> key_pos_;
-			int key_count_ = 0;
-		};
-		KeyMonitor key_monitor_;*/
+	};
+
+	template<typename T> 
+	class Input {
+	public:
+		virtual void OnMouse(const int &x, const int &y, const Uint32 &e_type, const Uint8 &button) {
+			switch (e_type) {
+			case SDL_MOUSEBUTTONUP: {
+				if (button == 1) {
+					OnLMouseUp(x, y);
+				} else if (button == 3) {
+					OnRMouseUp(x, y);
+				}
+			} break;
+			case SDL_MOUSEMOTION: {
+				OnMouseMove(x, y);
+			} break;
+			default: {
+				for (auto &it : ((T*)(this))->sub_) {
+					it->OnMouse(x, y, e_type, button);
+				}
+			} break;
+			}
+		}
+		virtual void OnKey(const SDL_Keycode &key, const Uint32 &up_or_down) {
+			auto it = kevent.find(key);
+			if (it != kevent.end()) {
+				it->second(key, up_or_down, (T *)this);//必须做这个转换成T*的操作，否则虽是同一个指针，但是在回调函数中无法正确转换
+				return;
+			}
+			for (auto &it : ((T*)(this))->sub_) {
+				if (it->IsAlive())
+					it->OnKey(key, up_or_down);
+			}
+		}
+		virtual void OnMouseMove(const int &x, const int &y) {
+			for (auto &it : ((T*)(this))->sub_) {
+				if (it->IsAlive())
+					it->OnMouseMove(x, y);
+			}
+		}
+		virtual void OnLMouseUp(const int &x, const int &y) {
+			for (auto &it : ((T *)(this))->sub_) {
+				if (it->IsAlive())
+					it->OnLMouseUp(x, y);
+			}
+		}
+		virtual void OnRMouseUp(const int &x, const int &y) {
+			for (auto &it : ((T*)(this))->sub_) {
+				if (it->IsAlive())
+					it->OnRMouseUp(x, y);
+			}
+		}
+		//virtual void OnMMouse(const int &x, const int &y) {}
+
+		void AddKeyEvent(const SDL_Keycode &key, const key_event &hdl) { kevent[key] = hdl; }
+
+	protected:
+	private:
+		map<SDL_Keycode, ns_sdl_winx::key_event> kevent;
 	};
 	class windowx
 	{
@@ -181,6 +177,21 @@ namespace ns_sdl_winx {
 		}
 
 		virtual void Draw(const unsigned& dt) = 0;
+
+		void DrawRect(const int &x, const int &y, const int &w, const int &h, const unsigned& color) {
+			SDL_Rect rt{x, y, w, h};
+			
+			Uint8 red, g, b, a;
+			SDL_GetRenderDrawColor(render_, &red, &g, &b, &a);
+			Uint8 nr = color & 0xff;
+			Uint8 ng = color >> 8 & 0xff;
+			Uint8 nb = color >> 16 & 0xff;
+			Uint8 na = color >> 24 & 0xff;
+
+			SDL_SetRenderDrawColor(render_, nr, ng, nb, na);			
+			SDL_RenderDrawRect(render_, &rt);
+			SDL_SetRenderDrawColor(render_, red, g, b, a);
+		}
 
 		void Offset(int& x, int& y, const int& w, const int& h) {
 			x = x + ox_;

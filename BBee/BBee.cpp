@@ -2,10 +2,16 @@
 #include <thread>
 #include <module.h>
 #include <ai.h>
+#include <menu.h>
+#include <physic-module.h>
+#include <map.h>
 
 using namespace ns_engine;
 using namespace ns_box2d;
 using namespace placeholders;
+using namespace ns_menu;
+using namespace ns_physic_module;
+using namespace ns_map;
 
 void AddActorWithoutTexture(Layer &layer, Actor &actor, int x, int y, int w, int h, bool center = false) {
 	layer.AddSub(&actor);
@@ -22,11 +28,20 @@ void AddActorWithoutTexture(Layer &layer, Actor &actor, int x, int y, int w, int
 void AddActor(Layer& layer, Actor& actor, int x, int y, int w, int h,bool center=false) {
 	
 	AddActorWithoutTexture(layer, actor, x, y, w, h, center);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorw.png", 300, 0);
-	//actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
-	//actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
-	//actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);
+	actor.AddAssetAnimation("player.png", 300, 0);
+	//actor.AddAssetAnimation("actor1.png", 300, 0);
+	//actor.AddAssetAnimation("actor1x.png", 300, 0);
+	//actor.AddAssetAnimation("actorx.png", 300, 0);
+	actor.AddAssetAnimation("player.png", 300, 0);
+}
+
+void AddButton(Layer &layer, Actor &actor, int x, int y, int w, int h, bool center = false) {
+	layer.AddSub(&actor);
+	if (center) {
+		x -= w / 2, y -= h / 2;
+	}
+	actor.SetPostion(x, y);
+	actor.SetSize(w, h);
 }
 
 
@@ -35,90 +50,170 @@ const int height = 400;
 
 #undef main
 void main() {
-	struct data_pack {
-		Game *xwx = nullptr;
-		Layer xlayer;
-		Scene xscene;
-		int x, y, w, h;
-		HWND parent;
+	auto wx = Game::Instance();
+	wx->SetPath("D:\\P\\game-bee");
+	wx->Create(width, height);
 
-		Actor *xmod = nullptr;
+	Scene sc_start("start");
+	Menu mn_start("start");
 
-		condition_variable cv;
-		mutex mtx;
-		void Init(int xx, int xy, int xw, int xh, HWND hwnd) {
-			parent = hwnd;
-			x = xx, y = xy, w = xw, h = xh;
+	wx->AddSub(&sc_start);
+	sc_start.AddSub(&mn_start);
+	sc_start.SetPostion(0, 0, false);
+	sc_start.SetSize(width, height);
+	mn_start.SetPostion(0, 0, false);
+	mn_start.SetSize(width, height);
+
+	Link ac_start("play", Link::LinkType::kScene);
+	EventButton ac_end;
+	AddButton(mn_start, ac_start, 200, 200, 100, 50);
+	AddButton(mn_start, ac_end, 200, 100, 100, 50);
+	ac_start.AddAssetAnimation("start.png", 0, 0);
+	ac_end.AddAssetAnimation("end.png", 0, 0);
+
+	Scene sc_play("play");
+	Layer ly_play("play");
+	wx->AddSub(&sc_play);
+	sc_play.AddSub(&ly_play);
+	sc_play.SetPostion(0, 0, false);
+	sc_play.SetSize(width, height);
+	ly_play.SetPostion(0, 0, false);
+	ly_play.SetSize(width, height);
+
+	sc_start.SetAlive(true);
+	ly_play.SetWorld(MainWorld::Instance());
+	//sc_play.SetAlive(true);
+
+	ModuleFactory::Instance()->LoadModule("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
+	ModuleFactory::Instance()->LoadModule("D:\\P\\game-workplace\\first-arpg\\module\\enemy\\enemy.json");
+	TestMap tmap;
+	ly_play.SetMap(&tmap);
+	//Actor actor(SampleFunc);
+	//AddActor(ly_play, actor, 225, 200, 50, 40);
+
+	Menu mn_pause("pause");
+	sc_play.AddSub(&mn_pause);
+	mn_pause.SetPostion(0, 0, false);
+	mn_pause.SetSize(width, height);
+
+	Link ac_continue("pause", false);
+	Link ac_gomain("start", Link::LinkType::kScene);
+	AddButton(mn_pause, ac_continue, 200, 200, 100, 50);
+	AddButton(mn_pause, ac_gomain, 200, 100, 100, 50);
+	ac_continue.AddAssetAnimation("continue.png", 0, 0);
+	ac_gomain.AddAssetAnimation("main-menu.png", 0, 0);
+	mn_pause.InitAlive(false);
+
+	MainCamera::Instance()->SetPostion(0, 0, false);
+	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
+	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
+
+	Game::ListenKey();
+	Game::ListenMouse();	
+
+	ly_play.AddKeyEvent(SDLK_ESCAPE, [](const SDL_Keycode &key, const Uint32 &up_or_down, void *data) {
+		if (up_or_down == SDL_KEYUP) {
+			auto sc = ((Layer *)(data))->parent_;
+			if (sc->IsAlive()) {
+				sc->ShowLayer("pause", true);
+			}
 		}
-	};
-	auto xdp = new data_pack;
+	});
 
-	auto xfunc = [](data_pack *xdp) {
-		xdp->xwx = Game::Instance();
-		auto wx = xdp->xwx;
-		wx->Create(width, height);
-
-		auto scene = &xdp->xscene;
-		auto layer = &xdp->xlayer;
-
-		wx->AddSub(scene);
-		scene->AddSub(layer);
-		scene->SetPostion(0, 0, false);
-		scene->SetSize(width, height);
-		layer->SetPostion(0, 0, false);
-		layer->SetSize(width, height);
-
-		Actor enemy(SampleFunc);
-		AddActor(*layer, enemy, 100, 100, 50, 40);
-		Follow fl;
-		MoveLeft ml(4.f);
-		MoveRight mr(4.f);
-		MoveUp mu;
-		MoveDown md;
-		enemy.PushAi(&ml);
-		enemy.PushAi(&mr);
-		enemy.PushAi(&mr);
-		enemy.PushAi(&ml);
-		enemy.PushAi(&mu);
-		enemy.PushAi(&md);
-		enemy.PushAi(&md);
-		enemy.PushAi(&mu);
-		//enemy.PushAi(&fl);
-		enemy.goaltype_.set(ns_module::mod_type::role);
-		enemy.type_ = ns_module::mod_type::enemy;
-
-		Actor enemy1(SampleFunc);
-		AddActor(*layer, enemy1, 400, 5, 50, 40);
-		Follow flx;
-		Clockwise cw(200);
-		enemy1.PushAi(&cw);
-		enemy1.PushAi(&flx);
-		enemy1.goaltype_.set(ns_module::mod_type::role);
-		enemy1.type_ = ns_module::mod_type::enemy;
-
-		MainCamera::Instance()->SetPostion(0, 0, false);
-		MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
-		MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
-
-		wx->Run();
-
-		delete xdp;
-	};
-
-	auto th = new thread(xfunc, xdp);
-	th->detach();
-
-	Sleep(500);
-
-	auto asstpath = "D:\\P\\game-workplace\\first-arpg\\asset";
-	auto mod = read_file("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
-	auto role = ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
-	role->type_ = ns_module::mod_type::role;
-
-	system("pause");
+	wx->Run();
 }
+	//void main() {
+//	struct data_pack {
+//		Game *xwx = nullptr;
+//		Layer xlayer;
+//		Scene xscene;
+//		int x, y, w, h;
+//		HWND parent;
+//
+//		Actor *xmod = nullptr;
+//
+//		condition_variable cv;
+//		mutex mtx;
+//		void Init(int xx, int xy, int xw, int xh, HWND hwnd) {
+//			parent = hwnd;
+//			x = xx, y = xy, w = xw, h = xh;
+//		}
+//	};
+//	auto xdp = new data_pack;
+//
+//	auto xfunc = [](data_pack *xdp) {
+//		xdp->xwx = Game::Instance();
+//		auto wx = xdp->xwx;
+//		wx->Create(width, height);
+//
+//		auto scene = &xdp->xscene;
+//		auto layer = &xdp->xlayer;
+//
+//		wx->AddSub(scene);
+//		scene->AddSub(layer);
+//		scene->SetPostion(0, 0, false);
+//		scene->SetSize(width, height);
+//		layer->SetPostion(0, 0, false);
+//		layer->SetSize(width, height);
+//
+//		Actor enemy(SampleFunc);
+//		AddActor(*layer, enemy, 100, 100, 50, 40);
+//		Follow fl;
+//		MoveLeft ml(4.f);
+//		MoveRight mr(4.f);
+//		MoveUp mu;
+//		MoveDown md;
+//		enemy.PushAi(&ml);
+//		enemy.PushAi(&mr);
+//		enemy.PushAi(&mr);
+//		enemy.PushAi(&ml);
+//		enemy.PushAi(&mu);
+//		enemy.PushAi(&md);
+//		enemy.PushAi(&md);
+//		enemy.PushAi(&mu);
+//		//enemy.PushAi(&fl);
+//		enemy.goaltype_.set(ns_module::mod_type::role);
+//		enemy.type_ = ns_module::mod_type::enemy;
+//
+//		Actor enemy1(SampleFunc);
+//		AddActor(*layer, enemy1, 400, 5, 80, 64);
+//		/*Follow flx;
+//		Clockwise cw(200);
+//		enemy1.PushAi(&cw);
+//		enemy1.PushAi(&flx);*/
+//		Circle crl(15);
+//		crl.SetClockwise(false);
+//		enemy1.PushAi(&crl);
+//		enemy1.goaltype_.set(ns_module::mod_type::role);
+//		enemy1.type_ = ns_module::mod_type::enemy;
+//
+//		MainCamera::Instance()->SetPostion(0, 0, false);
+//		//MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
+//		MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
+//
+//		wx->Run();
+//
+//		delete xdp;
+//	};
+//
+//	auto th = new thread(xfunc, xdp);
+//	th->detach();
+//
+//	Sleep(500);
+//
+//	auto asstpath = "D:\\P\\game-workplace\\first-arpg\\asset";
+//	auto mod = read_file("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
+//	auto role = ns_module::CreateMod(xdp->xwx, asstpath, mod, &xdp->xlayer, true);
+//	role->type_ = ns_module::mod_type::role;
+//
+//	ns_menu::Blood bld("xxx", [](void *a, void *x) {});
+//
+//	system("pause");
+//}
+
 //void main() {
 //	auto wx = Game::Instance();
+//	wx->SetPath("D:\\P\\project-engine\\out");
 //	wx->Create(width, height);
 //
 //	Scene scene;

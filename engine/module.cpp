@@ -1,10 +1,13 @@
 #include "module.h"
+#include "physic-module.h"
 
 using namespace ns_engine;
 using namespace Json;
+using namespace ns_physic_module;
+
 namespace ns_module {
 
-MTYPE_MAP_BEG(kModType)
+MTYPE_MAP_BEG(string, int, kModType)
 MTYPE_MAP(building)
 MTYPE_MAP(enemy)
 MTYPE_MAP(npc)
@@ -16,7 +19,7 @@ MTYPE_MAP(skill)
 MTYPE_MAP(effect)
 MTYPE_MAP_END
 
-MTYPE_MAP_BEG(kModDirect)
+MTYPE_MAP_BEG(string, int, kModDirect)
 MTYPE_MAP(idle)
 MTYPE_MAP(idle_up)
 MTYPE_MAP(idle_down)
@@ -28,56 +31,76 @@ MTYPE_MAP(left)
 MTYPE_MAP(right)
 MTYPE_MAP_END
 
-Actor *CreateMod(Game *wx, const string &asstpath, 
-	const string &strJsn, Layer *layer, bool isTest /*= false*/) {
-	if (!layer) {
-		return nullptr;
+
+MTYPE_MAP_BEG(string, int, kGenerate)
+MTYPE_MAP(common)
+MTYPE_MAP(hide_in_other)
+MTYPE_MAP(from_screen_else)
+MTYPE_MAP_END
+
+
+MTYPE_MAP_BEG(string, Actor::CreateBodyFunc, kCreateBody)
+MTYPE_MAP(SampleFunc)
+MTYPE_MAP_END
+
+
+void ModuleFactory::LoadModule(const string &modpath) {
+	auto strJsn = read_file(modpath);
+	if (strJsn.empty()) {
+		return;
 	}
 	Value jsn;
 	Reader rd;
 	auto isJsn = rd.parse(strJsn, jsn);
 	if (!isJsn) {
-		return nullptr;
+		return ;
 	}
-	lock_guard<mutex> lk(wx->mtx_);
+	auto name = jsn["modname"].asString();
 	auto mtype = jsn["type"].asString();
-	auto x = jsn["x"].asInt();
-	auto y = jsn["y"].asInt();
 	auto w = jsn["w"].asInt();
 	auto h = jsn["h"].asInt();
 	auto collw = jsn["collw"].asInt();
 	auto collh = jsn["collh"].asInt();
 
-	auto mod = new Actor(SampleFunc);
-	layer->AddSub(mod);
+	auto bodyFunc = jsn.isMember("bodyfunc") ? jsn["bodyfunc"].asString() : "SampleFunc";
+	auto generate = jsn.isMember("generate_type") ? jsn["generate_type"].asString() : "common";
+	auto center = jsn.isMember("center") ? jsn["center"].asBool() : true;
 
-	if (isTest) {
-		x = y = 0;
-
-		x += layer->w_ / 2;
-		y += layer->h_ / 2;
-	}
-
-	bool center = true;
-	if (center) {
-		x -= w / 2, y -= h / 2;
-	}
-	mod->SetPostion(x, y);
+	auto mod = new Module;
+	mod->is_center = center;
 	mod->SetSize(w, h);
-	layer->RelateSub(mod);
+	mod->mtype = (mod_type)kModType[mtype];
+	mod->gtype = (generate_type)kGenerate[generate];
+	mod->SetCreateBodyFunc(kCreateBody[bodyFunc]);
 
-	auto generate = jsn["generate_type"].asString();
 	for (auto &ani : jsn["animat"]) {
 		auto stat = ani["state"].asString();
 		auto pic = ani["pic"].asString();
 		auto dt = ani["dt"].asInt();
 
-		auto path = asstpath + "\\" + pic;
-
-		mod->AddAssetAnimation(path, dt, kModDirect[stat]);
+		mod->AddAssetAnimation(pic, dt, kModDirect[stat]);
 	}
 
-	if (kModType[mtype] == mod_type::role) {
+	mods[name] = mod;
+}
+void ModuleFactory::LoadModules(const string &modpath) {}
+void ModuleFactory::UnLoadModules() {
+	for (auto &it : mods) {
+		SAFE_DELETE(it.second);
+	}
+	mods.clear();
+}
+Actor *ModuleFactory::Copy(const string &name, Layer *layer, const int &x, const int &y) {
+	auto mod = new Module(*(Module *)mods[name]);
+
+	layer->AddSub(mod);
+	
+	mod->SetPostion(x, y, mod->is_center);
+	if (layer->world_) {
+		layer->world_->RelateWorld(mod);
+	}
+
+	if (mod->mtype == role) {
 		mod->AddFrameEvent([](void *self) {
 			Actor *actor = (Actor *)self;
 			auto x = 0, y = 0;
@@ -94,14 +117,10 @@ Actor *CreateMod(Game *wx, const string &asstpath,
 			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
 				y = -vel;
 			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_R)) {
-				actor->angle_++;
-			}
-			auto xxx = actor->world_->GetBody(actor)->GetPosition();
-			//print(actor->x_, actor->y_, xxx.x, xxx.y);
 			actor->SetVel(d_vel(x, y));
 		});
 	}
+
 	return mod;
 }
 };

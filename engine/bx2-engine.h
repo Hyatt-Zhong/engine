@@ -16,6 +16,8 @@ class Actor;
 
 namespace ns_box2d {
 
+extern const int nx;
+
 class bx2DbgDraw : public b2Draw {
 public:
 	bx2DbgDraw(ns_engine::Camera *xs);
@@ -167,8 +169,6 @@ private:
 	shared_ptr<b2World> world_;
 	shared_ptr<bx2DbgDraw> bxdbg_;
 };
-
-b2Body *SampleFunc(Actor *actor);
 
 class MainWorld:public bx2World,
 	public single<MainWorld>

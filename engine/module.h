@@ -26,8 +26,29 @@ MTYPE(left)
 MTYPE(right)
 MTYPE_END
 
-Actor *CreateMod(Game *wx, const string &asstpath,
-	const string &strJsn, Layer *layer, bool isTest = false);
+class ModuleFactory;
+class Module : public Actor {
+	friend class ModuleFactory;
+public:
+protected:
+private:
+	mod_type mtype;
+	bool is_center;
+	generate_type gtype;
+};
+
+class ModuleFactory : public single<ModuleFactory> {
+public:
+	void LoadModules(const string &modpath);
+	void LoadModule(const string &modpath);
+	void UnLoadModules();
+	Actor *Copy(const string &name, Layer* layer,const int& x,const int&y);
+	void DestroyModule(Actor* mod) { delete mod;}
+
+protected:
+private:
+	map<string, Actor *> mods;
+};
 
 };
 #endif

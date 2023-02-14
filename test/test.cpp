@@ -31,10 +31,10 @@ void AddActor(Layer& layer, Actor& actor, int x, int y, int w, int h,bool center
 		layer.world_->RelateWorld(&actor);
 	}
 
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actor1x.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorx.png", 300, 0);
-	actor.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\actorr.png", 300, 0);
+	actor.AddAssetAnimation("actor1.png", 300, 0);
+	actor.AddAssetAnimation("actor1x.png", 300, 0);
+	actor.AddAssetAnimation("actorx.png", 300, 0);
+	actor.AddAssetAnimation("actorr.png", 300, 0);
 }
 
 #undef main
@@ -67,8 +67,8 @@ void main()
 	MainWorld::Instance()->CreateStaticBody(0, -90, 300, 10);
 
 
-	//scene.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\scene.png", 0, 0);
-	//layer.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
+	//scene.AddAssetAnimation("scene.png", 0, 0);
+	//layer.AddAssetAnimation("layer.png", 0, 0);
 
 	AddActor(layer, actor, 0, 0, 50, 40);
 	Actor second(SampleFunc);
@@ -85,7 +85,7 @@ void main()
 	menu_world.SetDbgDraw(ns_engine::MainCamera::Instance());
 	menu.SetWorld(&menu_world);
 
-	//menu.AddAssetAnimation("D:\\P\\project-engine\\out\\asset\\layer.png", 0, 0);
+	//menu.AddAssetAnimation("layer.png", 0, 0);
 	AddActor(menu, button, 0, 0, 50, 40);
 
 	bx2Collision<Actor> collision;
