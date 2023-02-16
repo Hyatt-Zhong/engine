@@ -35,7 +35,7 @@ using namespace placeholders;
 
 namespace ns_params {
 static float render_distance_ = 3 / 2;//3个视野内
-static float active_distance_ = 0.75;//1个多一点视野内
+static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 
 };
 	enum AssetType {
@@ -154,15 +154,15 @@ static float active_distance_ = 0.75;//1个多一点视野内
 		using ThisClass = Temp<T, S>;
 		Temp() : curr_anim_(nullptr)
 			, x_(0), y_(0), w_(0), h_(0),angle_(0) {}
-		~Temp() {}
-		virtual void LoadAsset() {
+		virtual ~Temp() {}
+		/*virtual void LoadAsset() {
 			for (auto& it : anims_) {
 				it.second.LoadAsset();
 			}
 			for (auto& it : sub_) {
 				it->LoadAsset();
 			}
-		}
+		}*/
 		virtual void Update(const unsigned& dt) {
 			FrameEvent();
 			FrameEventOnce();
@@ -453,42 +453,58 @@ static float active_distance_ = 0.75;//1个多一点视野内
 	};
 
 	class Actor;
-	class Layer : public Temp<Layer, Actor>, public Base<Scene>, public ns_sdl_winx::Input<Scene> {
+	class Layer : public Temp<Layer, Actor>, public Base<Scene>, public ns_sdl_winx::Input<Layer> {
 	public:
 		Layer() {}
 		Layer(const string &name) { name_ = name; }
 
 		void CameraFollow(const int &delay, Actor *x, bool center = true);
+		void CameraFollow(const int &delay, const string& name, bool center = true);
 		void RelateSub(Actor *sub);
 		bool Exist(Actor *actor);
 		void Update(const unsigned &dt);
 		void SetMap(ns_map::Map *map);
+		void RemoveDeath();
+		ns_map::Map* GetMap() { return map_; }
+
+	public:
+		void AddToQuickMap(const string &name, Actor *actor) { quick_map[name] = actor; }
+		Actor *GetActor(const string &name) { MAP_FIND(quick_map, name, nullptr);	}
+		void DeleteFromQuickMap(Actor *actor) {
+			for (auto &it : quick_map) {
+				if (it.second == actor) {
+					quick_map.erase(it.first);
+					return;
+				}
+			}
+		}
 
 	protected:
 		ns_map::Map *map_ = nullptr;
 	private:
+		map<string, Actor*> quick_map;
 	};
 
-	class Actor : public Temp<Actor, Actor>, public Base<Layer>, public ns_sdl_winx::Input<Scene> {
+	class Actor : public Temp<Actor, Actor>, public Base<Layer>, public ns_sdl_winx::Input<Actor> {
 	public:
-		Actor() : is_destroy_(false), vel_(0, 0), create_body_(nullptr),
-			type_(ns_module::mod_type::none), goaltype_(0) {}
-		bool Active() {
+		Actor() : is_death_(false), vel_(0, 0), create_body_(nullptr),
+			type_(ns_module::mod_type::none), goaltype_(0),direct_(0.,1.) {}
+		void AutoDie() {
 			auto leadrol = Game::Instance()->Leadrol();
+			if (leadrol == nullptr || leadrol == this) {
+				return;
+			}
 			auto x = leadrol->x_;
 			auto y = leadrol->y_;
-			auto w = leadrol->w_;
-			auto h = leadrol->h_;
+			auto w = parent_->w_;
+			auto h = parent_->h_;
 			w *= ns_params::active_distance_;
 			h *= ns_params::active_distance_;
 			auto x_dt = abs(x_ - x);
 			auto y_dt = abs(y_ - y);
-			if (x_dt < w  &&
-			    y_dt < h ) {
-				return true;
+			if (!(x_dt < w && y_dt < h)) {
+				is_death_ = true;
 			}
-
-			return false;
 		}
 
 		void Update(const unsigned &dt) {
@@ -496,9 +512,7 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			x_ += x, y_ += y;
 			AiDrive();
 			Temp<Actor, Actor>::Update(dt);
-			if (is_destroy_) {
-				DestroyDirectly();
-			}
+			AutoDie();
 		}
 
 		void SetVel(const d_vel &v) {
@@ -516,57 +530,61 @@ static float active_distance_ = 0.75;//1个多一点视野内
 			}
 		}
 
+		void SetDirect(const d_vel &direct) { direct_ = direct; }
+
 		virtual void OnNotice(void* data) {}
 
 		virtual void OnCollision(Actor *actor) {
 			print("collision with", actor);
 		}
 
+		void Death() { is_death_ = true; }
+		bool IsDeath() { return is_death_; }
 		void Destroy() { is_destroy_ = true; }
-		//直接销毁，只能在主线程外部使用，内部应使用Destroy()设置销毁标志
-		void DestroyDirectly() {
-			world_->Destroy(this);
-			parent_->DeleteSub(this);
-		}
+		virtual bool IsDestroy() { return is_destroy_; }
+
 	public:
 		using CreateBodyFunc = b2Body* (*)(Actor*);
-		Actor(const CreateBodyFunc &create_body) : is_destroy_(false),
-			vel_(0, 0), create_body_(create_body) {}
+		Actor(const CreateBodyFunc &create_body) : is_death_(false), vel_(0, 0),
+			create_body_(create_body), direct_(0., 1.) {}
 		void SetCreateBodyFunc(CreateBodyFunc func) { create_body_ = func; }
 		CreateBodyFunc create_body_;
 
 	public:
-		void PushAi(Ai* ai) { ai_chain_.chain.push_back(ai);
-			ai->SetLayer(parent_);
+		void PushAi(Ai* ai) { 
+			ai->SetMaster(this);
+			ai_chain_.chain.push_back(ai);
 		}
 		void SwitchAi() {
 			if (!ai_chain_.alive) {
-				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : ai_chain_.chain[0];
+				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : (ai_chain_.chain[0]);
 				ai_chain_.index = 0;
 				return;
 			}
 			ai_chain_.index++;
 
 			if (ai_chain_.index >= ai_chain_.chain.size()) {
-				ai_chain_.alive = ai_chain_.chain[0];
+				ai_chain_.alive = (ai_chain_.chain[0]);
 				ai_chain_.index = 0;
 			} else {
-				ai_chain_.alive = ai_chain_.chain[ai_chain_.index];
+				ai_chain_.alive = (ai_chain_.chain[ai_chain_.index]);
 			}
 		}
 
 		
 	protected:
-		bool is_destroy_;
+		bool is_death_;
+		bool is_destroy_ = false;
 		d_vel vel_;
 		d_vel bx2_vel_;
+		d_vel direct_;
 		
 		AiChain ai_chain_;
 
 	protected:
 		void AiDrive() { 
 			if (!ai_chain_.alive) {
-				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : ai_chain_.chain[0];
+				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : (ai_chain_.chain[0]);
 			}
 			if (ai_chain_.alive && ai_chain_.alive->Drive(this)) {
 				SwitchAi();

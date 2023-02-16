@@ -1,6 +1,6 @@
 #include <engine.h>
 #include <thread>
-#include <module.h>
+#include <entity.h>
 #include <ai.h>
 #include <menu.h>
 #include <physic-module.h>
@@ -12,6 +12,7 @@ using namespace placeholders;
 using namespace ns_menu;
 using namespace ns_physic_module;
 using namespace ns_map;
+using namespace ns_entity;
 
 void AddActorWithoutTexture(Layer &layer, Actor &actor, int x, int y, int w, int h, bool center = false) {
 	layer.AddSub(&actor);
@@ -45,8 +46,8 @@ void AddButton(Layer &layer, Actor &actor, int x, int y, int w, int h, bool cent
 }
 
 
-const int width = 500;
-const int height = 400;
+const int width = 1000;
+const int height = 800;
 
 #undef main
 void main() {
@@ -84,12 +85,16 @@ void main() {
 	ly_play.SetWorld(MainWorld::Instance());
 	//sc_play.SetAlive(true);
 
-	ModuleFactory::Instance()->LoadModule("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json");
-	ModuleFactory::Instance()->LoadModule("D:\\P\\game-workplace\\first-arpg\\module\\enemy\\enemy.json");
+	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json"));
+	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\npc\\assistant.json"));
+	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\enemy\\enemy.json"));
+	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\bullet\\bullet.json"));
+	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\bullet\\FollowBullet.json"));
 	TestMap tmap;
+	tmap.AddTestMod("assistant", "assistant"); //必须加后面的名字
+	tmap.AddTestMod("assistant", "assistant1", width / 2, height / 2); //必须加后面的名字
 	ly_play.SetMap(&tmap);
-	//Actor actor(SampleFunc);
-	//AddActor(ly_play, actor, 225, 200, 50, 40);
+	ly_play.CameraFollow(0, "leadrole");
 
 	Menu mn_pause("pause");
 	sc_play.AddSub(&mn_pause);
@@ -108,6 +113,9 @@ void main() {
 	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
 	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
 
+	bx2Collision<Actor> collision;
+	MainWorld::Instance()->World()->SetContactListener(&collision);
+
 	Game::ListenKey();
 	Game::ListenMouse();	
 
@@ -117,6 +125,11 @@ void main() {
 			if (sc->IsAlive()) {
 				sc->ShowLayer("pause", true);
 			}
+		}
+	});
+
+	ly_play.AddKeyEvent(SDLK_SPACE, [](const SDL_Keycode &key, const Uint32 &up_or_down, void *data) {
+		if (up_or_down == SDL_KEYUP) {
 		}
 	});
 

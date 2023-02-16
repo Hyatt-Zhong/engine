@@ -28,7 +28,7 @@ void print(T && arg, Args&&... args) {
 		cout << endl;
 	}
 }
-inline std::string read_file(const std::string& path) {
+inline std::string ReadFile(const std::string& path) {
 	std::fstream fs;
 	fs.open(path);
 	std::string ret;

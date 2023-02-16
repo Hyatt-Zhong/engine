@@ -52,6 +52,19 @@ void Scene::ShowLayer(const string &name, bool show, bool monopoly) {
 	}
 }
 
+void Layer::RemoveDeath() {
+	for (auto it = sub_.begin(); it != sub_.end();) {
+		if ((*it)->IsDeath()) {
+			world_->Destroy(*it);
+			(*it)->Destroy();
+			it = sub_.erase(it);
+		} else {
+			it++;
+		}
+	}
+}
+
+
 void Layer::Update(const unsigned &dt) {
 	if (map_) {
 		map_->CreateOrUpdateActor();
@@ -60,16 +73,33 @@ void Layer::Update(const unsigned &dt) {
 		world_->Update(dt);
 	}
 	Temp<Layer, Actor>::Update(dt);
+
+	RemoveDeath();
 }
 
 void Layer::CameraFollow(const int &delay, Actor *actor, bool center) {
 	AddFrameEvent([=](void *self) {
+		auto pThis = (Layer *)self;
 		if (center) {
 			auto [x, y] = actor->GetCenter();
-			auto pThis = (Layer *)self;
 			pThis->camera_->Follow(delay, x, y);
 		} else {
-			auto pThis = (Layer *)self;
+			pThis->camera_->Follow(delay, actor->x_, actor->y_, false);
+		}
+	});
+}
+
+void Layer::CameraFollow(const int &delay, const string &name, bool center) {
+	AddFrameEvent([=](void *self) {
+		auto pThis = (Layer *)self;
+		auto actor = pThis->GetActor(name);
+		if (!actor) {
+			return;
+		}
+		if (center) {
+			auto [x, y] = actor->GetCenter();
+			pThis->camera_->Follow(delay, x, y);
+		} else {
 			pThis->camera_->Follow(delay, actor->x_, actor->y_, false);
 		}
 	});

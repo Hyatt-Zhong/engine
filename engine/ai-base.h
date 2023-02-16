@@ -10,18 +10,13 @@ namespace ns_ai {
 using namespace std;
 using namespace ns_engine;
 
-class Ai {
+class IntervalCount {
 public:
-	virtual bool Drive(Actor *actor) = 0; //返回true，执行完毕，激活下一个ai；返回false，继续执行当前ai
-	void SetLayer(Layer *layer);
-	bool Exist(Actor *actor);
-	//virtual void *Data() { return nullptr; }
-	//virtual string Name() = 0;
-
-protected:
+	virtual ~IntervalCount() {}
 	bool frame5() { return xcount % 5 == 0; }
 	bool frame10() { return xcount % 10 == 0; }
 	bool frame20() { return xcount % 20 == 0; }
+	bool frame(const int &x) { return xcount % x == 0; }
 	void frame() {
 		xcount++;
 		if (xcount >= xmaxcount) {
@@ -29,12 +24,24 @@ protected:
 		}
 	}
 
-private:
-	Layer *layer_ = nullptr;
-
+protected:
 private:
 	int xcount = 0;
 	int xmaxcount = 1001;
+};
+
+class Ai :public IntervalCount{
+public:
+	virtual bool Drive(Actor *actor) = 0; //返回true，执行完毕，激活下一个ai；返回false，继续执行当前ai
+	void SetMaster(Actor *actor);
+	bool Exist(Actor *actor);
+	//virtual void *Data() { return nullptr; }
+	//virtual string Name() = 0;
+
+protected:
+	Actor *master_ = nullptr;
+
+private:
 };
 
 struct AiChain {

@@ -101,6 +101,9 @@ namespace ns_sdl_winx {
 				it->second(key, up_or_down, (T *)this);//必须做这个转换成T*的操作，否则虽是同一个指针，但是在回调函数中无法正确转换
 				return;
 			}
+			if (((T *)(this))->sub_.empty()) {
+				return;
+			}
 			for (auto &it : ((T*)(this))->sub_) {
 				if (it->IsAlive())
 					it->OnKey(key, up_or_down);
@@ -266,6 +269,8 @@ public:
 	seq &GetTs() {
 		return ts_;
 	}
+
+	void UpdateParent(T *parent) { parent_ = parent; }
 
 protected:
 	void Next()

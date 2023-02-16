@@ -1,25 +1,35 @@
 #include "ai-base.h"
 #include "ai.h"
 #include "engine.h"
+#include "weapon.h"
+#include "entity.h"
 
 const float kPI = 3.1415926f;
 const float k2PI = 6.2831852f;
 const float kAngle = 57.295779f;
 using namespace ns_engine;
+using namespace ns_entity;
+
 namespace ns_ai {
 
-void Ai::SetLayer(Layer *layer) {
-	layer_ = layer;
+void SetAngle(Actor* actor, const d_vel& v) {
+	d_vel uv(0, 1);
+	auto cosangle = b2Dot(uv, v) / (v.Length() * uv.Length());
+	auto angle = acosf(cosangle) * kAngle;
+	actor->angle_ = v.x >= 0 ? angle : -angle;
+}
+
+void Ai::SetMaster(Actor *actor) {
+	master_ = actor;
 }
 bool Ai::Exist(Actor *actor) {
-	return layer_->Exist(actor);
+	return master_->parent_->Exist(actor);
 }
 
 bool Scout::ReportFixture(b2Fixture *fixture) {
 	auto body = fixture->GetBody();
 	auto actor = (Actor *)body->GetUserData().pointer;
-	if (search_one_)
-	{
+	if (search_one_) {
 		if (goal_type_.test(actor->type_)) {
 			result_ = actor;
 			return false;
@@ -33,7 +43,9 @@ bool Scout::ReportFixture(b2Fixture *fixture) {
 	return true;
 }
 Actor *Scout::Search(const int &range, Actor *point, typeset type) {
-	auto b2_pos = point->world_->GetBody(point)->GetPosition();
+	auto phybody = point->world_->GetBody(point);
+	//CHECK_POINT_NULL(phybody)
+	auto b2_pos = phybody->GetPosition();
 	auto x = b2_pos.x;
 	auto y = b2_pos.y;
 
@@ -68,19 +80,17 @@ vector<Actor*> Scout::SearchMult(const int& range, Actor* point, typeset type, i
 
 
 bool Follow::Drive(Actor *actor) {
-	if (!point && !Exist(point)) {
+	if (!Exist(point)) {
 		point = Search(range_, actor, actor->goaltype_);
-	} 
+	}
 	if (point) {
 		d_vel v(point->x_ - actor->x_, point->y_ - actor->y_);
 		//print(v.x, v.y);
 		v.Normalize();
-		d_vel uv(0, 1);
-		auto cosangle = b2Dot(uv, v) / (v.Length() * uv.Length());
-		auto angle = acosf(cosangle) * kAngle;
-		actor->angle_ = v.x >= 0 ? angle : -angle;
+		actor->SetDirect(v);
+		SetAngle(actor, v);
 		//print(cosangle, actor->angle_);
-		v *= 1.f;
+		v *= dynamic_cast<ModuleInstance *>(master_)->velocity_;
 		actor->SetVel(v);
 	} else {
 		return true;
@@ -89,13 +99,15 @@ bool Follow::Drive(Actor *actor) {
 }
 
 bool Circle::Drive(Actor *actor) {
-	if (!point && !Exist(point)) {
-		point = Search(range_, actor, actor->goaltype_);
+	if (!Exist(point_)) {
+		point_ = Search(range_, actor, actor->goaltype_);
 	}
-	if (point) {
-		d_vel v(point->x_ - actor->x_, point->y_ - actor->y_);
+	if (point_) {
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
+		d_vel v(point_->x_ - actor->x_, point_->y_ - actor->y_);
 		//print(v.x, v.y);
 		auto length = v.Normalize();
+		actor->SetDirect(v);
 		if (length > distance_max_) {
 			v *= velocity_big;
 			actor->SetVel(v);
@@ -105,7 +117,7 @@ bool Circle::Drive(Actor *actor) {
 			actor->SetVel(-v);
 			print("small");
 		} else if (length <= distance_max_ && length >= distance_min_) {
-			d_vel v1(point->x_, point->y_);
+			d_vel v1(point_->x_, point_->y_);
 			b2Rot rt(-k2PI / n_);
 			if (!ck_) {
 				rt.Set(k2PI / n_);
@@ -120,16 +132,70 @@ bool Circle::Drive(Actor *actor) {
 		}
 		//frame();
 		//if (frame5()) {
-			/*d_vel uv(0, 1);
-			auto cosangle = b2Dot(uv, v) / (v.Length() * uv.Length());
-			auto angle = acosf(cosangle) * kAngle;
-			actor->angle_ = v.x >= 0 ? angle : -angle;*/
+			SetAngle(actor, v);
 		//}
 	} else {
-		return true;
+		return true;//找不到就结束
+	}
+	return false;
+}
+
+
+Ai *AiMoveUp() {
+	auto ai = new Move;
+	return ai;
+}
+
+Ai *AiCircle() {
+	return new Circle;
+}
+
+Ai *AiFollow() {
+	return new Follow;
+}
+
+Ai *AiCircleRole() {
+	return new CircleRole;
+}
+
+Ai *AiLook() {
+	return new Look;
+}
+
+bool Move::Drive(Actor *actor) {
+	auto v = direct_;
+	v *= dynamic_cast<ModuleInstance *>(master_)->velocity_;
+	actor->SetVel(v);
+	return true;
+}
+
+bool Look::Drive(Actor *actor) {
+	if (!Exist(point_)) {
+		point_ = Search(range_, actor, actor->goaltype_);
+	}
+	if (point_) {
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
+		d_vel v(point_->x_ - actor->x_, point_->y_ - actor->y_);
+		//print(v.x, v.y);
+		auto length = v.Normalize();
+		actor->SetDirect(v);
+		SetAngle(actor, v);
+	} else {
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);
 	}
 	return true;
 }
 
+bool CircleRole::Drive(Actor *actor) {
+	auto point = Search(range_, actor, actor->goaltype_);
+	if (point) {
+		return true;
+	} else {
+		SetPoint(Game::Instance()->Leadrol());
+		Circle::Drive(actor);
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);//必须在这行设置为false,因为Circle::Drive会设置为true
+	}
+	return false;
+}
 
 };

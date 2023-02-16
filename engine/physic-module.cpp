@@ -31,7 +31,7 @@ b2Body *SampleFunc(Actor *actor) {
 
 	fixtureDef.filter.categoryBits = kCommon;
 	//对象之间有碰撞检测但是又不想让它们有碰撞反应，那么你就需要把isSensor设置成true
-	//fixtureDef.isSensor = true;
+	fixtureDef.isSensor = true;
 
 	b2PolygonShape bodyShape;
 

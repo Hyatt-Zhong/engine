@@ -4,11 +4,16 @@
 #include "bx2-engine.h"
 #include "ai-base.h"
 
+namespace ns_weapon {
+class Weapon;
+};
+
 namespace ns_ai {
 using namespace std;
 using namespace ns_engine;
 using namespace ns_box2d;
 using namespace ns_module;
+using namespace ns_weapon;
 
 //#define AI_NAME(NAME) string name = NAME; string Name() { return NAME; }
 
@@ -43,51 +48,28 @@ private:
 };
 
 
-template<char T>
 class Move:public Ai
 {
 public:
-	Move() {}
-	Move(const float& v, const int& max_count) : xv(v), maxcount(max_count) {}
-	Move(const float& v) : xv(v) {}
-	Move(const int& max_count) : maxcount(max_count) {}
-	bool Drive(Actor *actor) { 
-		switch (T) {
-		case 'L':
-			actor->SetVel(d_vel(-xv, 0));
-			break;
-		case 'R':
-			actor->SetVel(d_vel(xv, 0));
-			break;
-		case 'U':
-			actor->SetVel(d_vel(0, xv));
-			break;
-		case 'D':
-			actor->SetVel(d_vel(0, -xv));
-			break;
-		default:
-			break;
-		}
-		count++;
-		if (count >= maxcount) {
-			count = 0;
-			return true;
-		}
-		return false;
-	}
+	Move() :direct_(0.,1.){}
+	Move(const d_vel& direct) : direct_(direct) {}
+	void SetDirect(const d_vel &direct) { direct_ = (direct); }
+	bool Drive(Actor *actor);
 	//AI_NAME(string("Move")+T)
 protected:
-	const float xv = 1;
+	d_vel direct_;
 
 private:
-	int count = 0;
-	const int maxcount = 90;
 };
 
-using MoveLeft = Move<'L'>;
-using MoveRight = Move<'R'>;
-using MoveUp = Move<'U'>;
-using MoveDown = Move<'D'>;
+class Look : public Ai, public Scout {
+public:
+	bool Drive(Actor *actor);
+
+protected:
+private:
+	Actor *point_ = nullptr;
+};
 
 template<char T> 
 class Patrol : public Ai, public Scout {
@@ -187,17 +169,25 @@ public:
 	}
 	Circle() {}
 	bool Drive(Actor *actor);
-	void SetPoint(Actor *point_) { point = point_; }
+	void SetPoint(Actor *point) { point_ = point; }
 	void SetClockwise(bool ck) { ck_ = ck; }
 	//AI_NAME("Follow")
 protected:
 private:
-	Actor *point = nullptr;
+	Actor *point_ = nullptr;
 	int n_ = 24;
 	float distance_min_ = distance - distance_dt;
 	float distance_max_ = distance + distance_dt;
 	float dis_ = distance;
 	bool ck_ = true;
+};
+
+class CircleRole : public Circle {
+public:
+	bool Drive(Actor *actor);
+
+protected:
+private:
 };
 
 class Line
@@ -208,5 +198,11 @@ public:
 protected:
 private:
 };
+
+Ai *AiMoveUp();
+Ai *AiCircle();
+Ai *AiFollow();
+Ai *AiCircleRole();
+Ai *AiLook();
 };
 #endif

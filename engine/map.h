@@ -15,19 +15,23 @@ public:
 	virtual void CreateOrUpdateActor() = 0;
 	void SetLayer(Layer *ly) { layer = ly; }
 
+	void AddToManage(Actor *actor);
+	void Clear();
+
 protected:
 	Layer *layer = nullptr;
+	vector<Actor *> actors;
 
 private:
 };
 
 struct element {
 	int x, y;
-	string name;
+	string modname;
+	string name;//索引名字，也是在内存中的名字
 };
 
-class CommonMap
-{
+class CommonMap : public Map {
 public:
 	void Load(const string &file) {}
 	void CreateOrUpdateActor() {}
@@ -40,16 +44,19 @@ protected:
 private:
 };
 
-class TestMap:public Map
-{
+class TestMap : public Map {
 public:
 	TestMap();
-	void AddTestMod(const string &name);
+	void AddTestMod(const string &name, const string &modname, int x = 0, int y = 0);
 	void CreateOrUpdateActor();
 
 protected:
 private:
 	queue<element> que;
+	vector<element> emts;
+
+	int count = 0;
+	int maxcount = 150;
 };
 
 class RogueMap:public Map {
