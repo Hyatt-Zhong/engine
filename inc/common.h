@@ -31,9 +31,9 @@ void print(T && arg, Args&&... args) {
 inline std::string ReadFile(const std::string& path) {
 	std::fstream fs;
 	fs.open(path);
-	std::string ret;
-	fs >> ret;
-	return ret;
+	std::stringstream ss;
+	ss << fs.rdbuf();
+	return ss.str();
 }
 
 template<class T>

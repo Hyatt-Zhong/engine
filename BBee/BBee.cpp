@@ -93,8 +93,10 @@ void main() {
 	TestMap tmap;
 	tmap.AddTestMod("assistant", "assistant"); //必须加后面的名字
 	tmap.AddTestMod("assistant", "assistant1", width / 2, height / 2); //必须加后面的名字
+	tmap.AddTestMod("assistant", "assistant2", width / 2, height);     //必须加后面的名字
+	tmap.AddTestMod("assistant", "assistant4", width / 2, height/3);     //必须加后面的名字
 	ly_play.SetMap(&tmap);
-	ly_play.CameraFollow(0, "leadrole");
+	//ly_play.CameraFollow(0, "leadrole");
 
 	Menu mn_pause("pause");
 	sc_play.AddSub(&mn_pause);
@@ -110,7 +112,7 @@ void main() {
 	mn_pause.InitAlive(false);
 
 	MainCamera::Instance()->SetPostion(0, 0, false);
-	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
+	//MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
 	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
 
 	bx2Collision<Actor> collision;

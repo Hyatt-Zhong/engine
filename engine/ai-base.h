@@ -1,6 +1,9 @@
 #ifndef AI_BASE_H
 #define AI_BASE_H
 #include <vector>
+#include <string>
+#include <map>
+#include <queue>
 namespace ns_engine {
 class Actor;
 class Layer;
@@ -52,5 +55,15 @@ struct AiChain {
 	AiChain() : alive(nullptr),index(0) {}
 };
 
+class MultAi : public Ai {
+public:
+protected:
+	map<Actor *, void *> members_;
+
+private:
+};
+
+using AiQuene = queue<MultAi*>;
+using AiContorl = map<string,MultAi*>;
 };
 #endif

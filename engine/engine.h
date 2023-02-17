@@ -145,6 +145,10 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		void div(const int &nx) { x_ /= nx, y_ /= nx, w_ /= nx, h_ /= nx; }
 	};
 
+	struct Center {
+		int x, y;
+	};
+
 	using frame_event = function<void(void*)>;
 	//using frame_event = void(*)(void*);
 	template<typename T, typename S>
@@ -292,8 +296,11 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		}
 		void AddFrameEventOnce(const frame_event &fe) { frame_events_once_.push_back(fe); }
 
-		pair<int, int> GetCenter() {
+		Center GetCenter() {
 			return {x_ + w_ / 2, y_ + h_ / 2};
+		}
+
+		d_vel GetCenterB2() { return move(d_vel(x_ + w_ / 2, y_ + h_ / 2));
 		}
 
 		virtual bool IsAlive() { return alive_; }
@@ -491,7 +498,7 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 			type_(ns_module::mod_type::none), goaltype_(0),direct_(0.,1.) {}
 		void AutoDie() {
 			auto leadrol = Game::Instance()->Leadrol();
-			if (leadrol == nullptr || leadrol == this) {
+			if (leadrol == nullptr || leadrol == this/*|| !parent_->Exist(leadrol)*/ ){
 				return;
 			}
 			auto x = leadrol->x_;
@@ -507,26 +514,28 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 			}
 		}
 
-		void Update(const unsigned &dt) {
-			auto &[x, y] = vel_;
-			x_ += x, y_ += y;
-			AiDrive();
-			Temp<Actor, Actor>::Update(dt);
-			AutoDie();
-		}
-
 		void SetVel(const d_vel &v) {
 			auto bx2_drive = ns_box2d::MainWorld::Instance()->IsBx2Drive();
-			if (bx2_drive)
-			{
+			if (bx2_drive) {
 				auto body = ns_box2d::MainWorld::Instance()->GetBody(this);
-				//body->ApplyForceToCenter(v, true);//设置作用力				
+				//body->ApplyForceToCenter(v, true);//设置作用力
 				if (bx2_vel_ != v) {
 					body->SetLinearVelocity(v);
 					bx2_vel_ = v;
 				}
 			} else {
 				vel_ = v;
+			}
+		}
+
+		void Update(const unsigned &dt);
+
+		d_vel GetVel() {
+			auto bx2_drive = ns_box2d::MainWorld::Instance()->IsBx2Drive();
+			if (bx2_drive) {
+				return bx2_vel_;
+			} else {
+				return vel_;
 			}
 		}
 
@@ -571,18 +580,31 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 			}
 		}
 
+		MultAi *FindContorlAi(const string &name) { MAP_FIND(ai_control_, name, nullptr) }
+
+		void PushAi(MultAi *mai) { ai_quene_.push(mai); }
+
+	public:
+		d_vel direct_;
 		
 	protected:
 		bool is_death_;
 		bool is_destroy_ = false;
 		d_vel vel_;
 		d_vel bx2_vel_;
-		d_vel direct_;
 		
-		AiChain ai_chain_;
-
+		AiChain ai_chain_;//自己的ai
+		AiQuene ai_quene_;//别人的ai
+		AiContorl ai_control_;//控制别人的ai
 	protected:
 		void AiDrive() { 
+			if (!ai_quene_.empty()) {
+				auto ai = ai_quene_.front();
+				if (ai->Drive(this)) {
+					ai_quene_.pop();
+				}
+				return;
+			}
 			if (!ai_chain_.alive) {
 				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : (ai_chain_.chain[0]);
 			}

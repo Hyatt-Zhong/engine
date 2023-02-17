@@ -10,7 +10,7 @@ namespace ns_map {
 
 TestMap::TestMap() {
 	element a = {Game::Instance()->w_ / 2, Game::Instance()->h_ / 4, "role", "leadrole"};
-	element b = {Game::Instance()->w_ / 3, Game::Instance()->h_ * 3 / 4, "enemy", "enemy"};
+	element b = {Game::Instance()->w_ / 5/*3*/, Game::Instance()->h_ * 3 / 4, "enemy", "enemy"};
 	que.push(a);
 	que.push(b);
 }
@@ -36,15 +36,6 @@ void TestMap::CreateOrUpdateActor() {
 					int x, y;
 					dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
 					ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", layer, master, x, y, "");
-					/*layer->AddFrameEventOnce(bind(
-						[this](void *layer, void *data) {
-							auto master = (Actor *)data;
-							auto actor = ModuleFactory::Instance()->Copy<ModuleInstance>(
-								"FollowBullet", (Layer *)layer, master->x_ + master->w_ / 2,
-								master->y_ + master->h_*1.5, "");
-							AddToManage(actor);
-						},
-						_1, data));*/
 				}
 			});
 		}
@@ -77,6 +68,9 @@ void Map::AddToManage(Actor *actor) {
 void Map::Clear() {
 	for (auto it = actors.begin(); it != actors.end();) {
 		if ((*it)->IsDestroy()) {
+			if ((*it)->type_ == role) {
+				Game::Instance()->SetLeadrol(nullptr);
+			}
 			ModuleFactory::Instance()->DestroyModule(layer, *it);
 			it = actors.erase(it);
 		} else {

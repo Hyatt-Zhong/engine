@@ -17,7 +17,7 @@ using namespace ns_weapon;
 
 //#define AI_NAME(NAME) string name = NAME; string Name() { return NAME; }
 
-const int kScoutRange = 5;
+const int kScoutRange = 10;
 
 class Scout : public b2QueryCallback {
 public:
@@ -71,81 +71,14 @@ private:
 	Actor *point_ = nullptr;
 };
 
-template<char T> 
-class Patrol : public Ai, public Scout {
+class LookAndMove : public Ai, public Scout {
 public:
-	Patrol() { SetDirect(); }
-	Patrol(const float &v, const int &max_count) : xv(v), maxcount(max_count) { SetDirect(); }
-	Patrol(const float &v) : xv(v) { SetDirect(); }
-	Patrol(const int &max_count) : maxcount(max_count) { SetDirect(); }
+	bool Drive(Actor *actor);
 
-	bool Drive(Actor *actor) {
-		switch (direct) {
-		case LD:
-			actor->SetVel(d_vel(-xv, -xv));
-			break;
-		case LU:
-			actor->SetVel(d_vel(-xv, xv));
-			break;
-		case RU:
-			actor->SetVel(d_vel(xv, xv));
-			break;
-		case RD:
-			actor->SetVel(d_vel(xv, -xv));
-			break;
-		default:
-			break;
-		}
-		SwitchDirect();
-		if (count % dt == 1) {
-			auto point = Search(range_, actor, actor->goaltype_);
-			if (point) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	void SetDt(int dt_) { dt = dt_;	}
-
-private:
-	void SetDirect() {
-		if (T == 'T') {
-			ls_direct = {LD, LU, RU, RD};
-		} else {
-			ls_direct = {LU, LD, RD, RU};
-		}
-		direct = ls_direct[0];
-	}
-	void SwitchDirect() {
-		count++;
-		if (count >= maxcount) {
-			count = 0;
-		} else {
-			return;
-		}
-		index++;
-		if (index >= ls_direct.size()) {
-			index = 0;
-		}
-		direct = ls_direct[index];
-	}
-	//AI_NAME(string("Move")+T)
 protected:
-	const float xv = 1;
-
-	enum xdirect { NONE = 0, LD = 1, LU, RU, RD };
-	xdirect direct = NONE;
-	vector<xdirect> ls_direct;
-	int index = 0;
-
 private:
-	int dt = 5;
-	int count = 0;
-	const int maxcount = 90;
+	Actor *point_ = nullptr;
 };
-using Clockwise = Patrol<'T'>;
-using Counterclockwise = Patrol<'F'>;
 
 const static float distance = 123.f;
 const static float distance_dt = 30.f;
@@ -169,6 +102,7 @@ public:
 	}
 	Circle() {}
 	bool Drive(Actor *actor);
+	bool SetVel(Actor *actor, d_vel v, float length);
 	void SetPoint(Actor *point) { point_ = point; }
 	void SetClockwise(bool ck) { ck_ = ck; }
 	//AI_NAME("Follow")
@@ -190,19 +124,78 @@ protected:
 private:
 };
 
-class Line
-{
+class MultCircleRole : public MultAi, public Scout {
 public:
-	Line() {}
+	bool Drive(Actor *actor);
+	void SetClockwise(bool ck) { ck_ = ck; }
 
 protected:
 private:
+	float distance_min_ = distance - distance_dt;
+	float distance_max_ = distance + distance_dt;
+	float dis_ = distance;
+
+	int n_ = 24;
+	bool ck_ = true;
 };
 
-Ai *AiMoveUp();
+class Line:public Ai
+{
+public:
+	Line() {}
+	Line(float xp) {
+		que_.push(d_vel(xp, 0));
+		que_.push(d_vel(0, xp));
+		que_.push(d_vel(-xp, 0));
+		que_.push(d_vel(0, -xp));
+	}
+	bool Drive(Actor *actor);
+	void SetLine(const queue<d_vel> &que, bool loop = true) {
+		que_ = que;
+		loop_ = loop;
+	}
+
+protected:
+	queue<d_vel> que_;
+	bool loop_ = true;
+
+	bool started_ = false;//是否设定了原点
+	d_vel orgin_;//原点
+
+private:
+};
+
+template<char T> 
+class Patrol : public Line {
+public:
+	Patrol(float xp) {
+		if (T == 'T') {
+			que_.push(d_vel(-xp, 0));
+			que_.push(d_vel(0, xp));
+			que_.push(d_vel(xp, 0));
+			que_.push(d_vel(0, -xp));
+		} else {
+			que_.push(d_vel(-xp, 0));
+			que_.push(d_vel(0, -xp));
+			que_.push(d_vel(xp, 0));
+			que_.push(d_vel(0, xp));
+		}
+	}	
+
+private:
+};
+using Clockwise = Patrol<'T'>;
+using Counterclockwise = Patrol<'F'>;
+
+
+Ai *AiMove();
 Ai *AiCircle();
 Ai *AiFollow();
 Ai *AiCircleRole();
 Ai *AiLook();
+Ai *AiLine();
+Ai *AiLookAndMove();
+Ai *AiCounterclockwise();
+MultAi *MAiMultCircleRole();
 };
 #endif

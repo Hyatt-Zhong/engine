@@ -48,12 +48,21 @@ MTYPE_MAP(SampleFunc)
 MTYPE_MAP_END
 
 MTYPE_MAP_BEG(string, Module::CreateAi, kAiMap)
-MTYPE_MAP(AiMoveUp)
+MTYPE_MAP(AiMove)
 MTYPE_MAP(AiFollow)
 MTYPE_MAP(AiCircle)
 MTYPE_MAP(AiCircleRole)
 MTYPE_MAP(AiLook)
+MTYPE_MAP(AiLookAndMove)
+MTYPE_MAP(AiLine)
+MTYPE_MAP(AiCounterclockwise)
 MTYPE_MAP_END
+
+
+MTYPE_MAP_BEG(string, Module::CreateMultAi, kMAiMap)
+MTYPE_MAP(MAiMultCircleRole)
+MTYPE_MAP_END
+
 
 MTYPE_MAP_BEG(string, Module::CreateWeapon, kWeaponMap)
 MTYPE_MAP(WPAlpha)
@@ -61,10 +70,11 @@ MTYPE_MAP(WPFollowBullet)
 MTYPE_MAP_END
 
 const string kstrAi = "ai";
+const string kstrMAi = "mai";
 const string kstrWeapon = "weapon";
+const string kstrGoalType = "goaltype";
 void Module::SetParam(const Value &jsn) {
 	auto mtype = jsn["type"].asString();
-	auto gtype = jsn["goaltype"].asString();
 	auto w = jsn["w"].asInt();
 	auto h = jsn["h"].asInt();
 	auto collw = jsn["collw"].asInt();
@@ -82,16 +92,27 @@ void Module::SetParam(const Value &jsn) {
 		}
 	}
 
+	if (jsn.isMember(kstrMAi) && jsn[kstrMAi].isArray()) {
+		for (auto &it : jsn[kstrMAi]) {
+			mai_names_.push_back(it.asString());
+		}
+	}
+
 	if (jsn.isMember(kstrWeapon) && jsn[kstrWeapon].isArray()) {
 		for (auto &it : jsn[kstrWeapon]) {
 			wp_names_.push_back(it.asString());
 		}
 	}
 
+	if (jsn.isMember(kstrGoalType) && jsn[kstrGoalType].isArray()) {
+		for (auto &it : jsn[kstrGoalType]) {
+			goaltype_.set((mod_type)kModType[it.asString()]);
+		}
+	}
+
 	is_center_ = center;
 	SetSize(w, h);
 	type_ = (mod_type)kModType[mtype];
-	goaltype_.set((mod_type)kModType[gtype]);
 	gtype_ = (generate_type)kGenerate[generate];
 	SetCreateBodyFunc(kCreateBody[bodyFunc]);
 
@@ -146,6 +167,20 @@ void ModuleFactory::AddToLayer(Module* mod, Layer *layer, const int &x, const in
 				y = -vel;
 			}
 			actor->SetVel(d_vel(x, y));
+			
+			if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(1)) {
+				auto n = 20;
+				static int count = 0;
+				if (count % n == n-1) {
+					auto master = actor;
+					int x, y;
+					dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
+					ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master,
+												  x, y, "");
+					count = 0;
+				}
+				count++;
+			}
 		});
 	}
 }

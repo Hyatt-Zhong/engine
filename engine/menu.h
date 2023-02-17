@@ -13,17 +13,17 @@ using namespace ns_module;
 class Menu : public Layer {
 public:
 	using Layer::Layer;
-	//void OnMouseMove(const int& x, const int& y) {
-	//	auto xx = x;
-	//	auto yy = y;
-	//	camera_->Trans(xx, yy);
-	//	if (InRange(xx, yy)) {}//更新in_range_标志，将自动调用OnHover
-	//	Layer::OnMouseMove(x, y);
-	//}
+	void OnMouseMove(const int& x, const int& y) {
+		auto xx = x;
+		auto yy = y;
+		camera_->Trans(xx, yy);
+		if (InRange(xx, yy)) {}//更新in_range_标志，将自动调用OnHover
+		Layer::OnMouseMove(x, y);
+	}
 
-	//void OnHover(const int &x, const int &y, const int &w, const int &h) { 
-	//	Game::Instance()->DrawRect(x, y, w, h, 0x0000ffff);
-	//}
+	void OnHover(const int &x, const int &y, const int &w, const int &h) { 
+		Game::Instance()->DrawRect(x, y, w, h, 0x0000ffff);
+	}
 protected:
 private:
 };

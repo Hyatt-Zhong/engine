@@ -78,7 +78,7 @@ class bx2Collision : public b2ContactListener {
 			}
 	}
 		void EndContact(b2Contact *contact) {
-			print("EndContact");
+			//print("EndContact");
 		}
 		void PreSolve(b2Contact* contact,
 			const b2Manifold* oldManifold) { 

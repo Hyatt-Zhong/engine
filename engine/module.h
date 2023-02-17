@@ -42,10 +42,12 @@ public:
 
 	using CreateAi = Ai *(*)();
 	using CreateWeapon = Weapon *(*)();
+	using CreateMultAi = MultAi *(*)();
 
 protected:
 	vector<string> ai_names_;
 	vector<string> wp_names_;
+	vector<string> mai_names_;
 
 private:
 	bool is_center_;
@@ -53,6 +55,7 @@ private:
 };
 
 extern map<string, Module::CreateAi> kAiMap;
+extern map<string, Module::CreateMultAi> kMAiMap;
 extern map<string, Module::CreateWeapon> kWeaponMap;
 
 
@@ -84,9 +87,13 @@ public:
 
 	template<typename T>
 	void SafeAddToLayer(const string &modname, Layer *layer, Actor* master, const int &x, const int &y, const string &name) {
+		//如果下一帧master被销毁了，goaltype和direct都无法访问了，所以先记录下来
+		auto goaltype = master->goaltype_;
+		auto direct = master->direct_;
 		layer->AddFrameEventOnce([=](void *) {
 			auto bullet = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y, name);
-			bullet->goaltype_ = master->goaltype_;
+			bullet->goaltype_ = goaltype;
+			bullet->direct_ = direct;
 			layer->GetMap()->AddToManage(bullet);
 		});
 	}

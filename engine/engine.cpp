@@ -77,6 +77,14 @@ void Layer::Update(const unsigned &dt) {
 	RemoveDeath();
 }
 
+void Actor::Update(const unsigned &dt) {
+	auto &[x, y] = vel_;
+	x_ += x, y_ += y;
+	Temp<Actor, Actor>::Update(dt);
+	AutoDie();//死亡检测在ai驱动之前，可用死亡检测判断能否操作对象
+	AiDrive();
+}
+
 void Layer::CameraFollow(const int &delay, Actor *actor, bool center) {
 	AddFrameEvent([=](void *self) {
 		auto pThis = (Layer *)self;

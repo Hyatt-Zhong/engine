@@ -14,6 +14,11 @@ Entity::~Entity() {
 		SAFE_DELETE(it);
 	}
 	ais_.clear();
+	for (auto& it:mais_)
+	{
+		SAFE_DELETE(it);
+	}
+	mais_.clear();
 }
 void Entity::Init() {
 	Module::Init();
@@ -31,6 +36,15 @@ void Entity::Init() {
 			ai->SetMaster(this);
 			PushAi(ai);
 			ais_.push_back(ai);
+		}
+	}
+
+	for (auto &it : mai_names_) {
+		if (!it.empty()) {
+			auto ai = kMAiMap[it]();
+			ai->SetMaster(this);
+			ai_control_[it] = ai;
+			mais_.push_back(ai);
 		}
 	}
 }
@@ -94,9 +108,8 @@ void Entity::OnCollision(Actor *actor) {
 void Entity::GetSubGeneratePos(int &x, int &y) {
 	auto pos = direct_;
 	pos *= (w_ + h_) / 2;
-	x = x_ + w_ / 2;
-	y = y_ + h_ / 2;
-	x += pos.x;
-	y += pos.y;
+	auto [xx, yy] = GetCenter();
+	x = pos.x + xx;
+	y = pos.y + yy;
 }
 };

@@ -17,7 +17,7 @@ public:
 	void OnCollision(Actor *actor);
 	void UpdateCoefficient();
 	void GetSubGeneratePos(int &x, int &y);
-	void UseWeapon(bool use) { use_weapon_ = use; }
+	void UseWeapon(bool use) { /*use_weapon_ = use;*/ }
 
 	float life_ = 100.f;
 	float maxlife_ = 100.f;
@@ -34,6 +34,7 @@ private:
 private:
 	vector<Weapon *> wps_;
 	vector<Ai *> ais_;
+	vector<MultAi *> mais_;
 };
 using ModuleInstance = Entity;
 
