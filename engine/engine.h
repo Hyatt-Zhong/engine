@@ -20,6 +20,7 @@ MTYPE_BEG(mod_type)
 	MTYPE(bullet)
 	MTYPE(skill)
 	MTYPE(effect)
+	MTYPE(combination)
 MTYPE_END
 
 using typeset = bitset<32>;
@@ -421,6 +422,9 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 			map_path_ = path + "\\map\\";
 		}
 
+		string GetModulePath() { return module_path_; }
+		string GetMapPath() { return map_path_; }
+
 		Scene* GetCurScene() {
 			auto it = find_if(sub_.begin(), sub_.end(), [](auto &&xx) { return xx->IsAlive(); });
 			cur_scene_ = it != sub_.end() ? *it : nullptr;
@@ -582,7 +586,7 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 
 		MultAi *FindContorlAi(const string &name) { MAP_FIND(ai_control_, name, nullptr) }
 
-		void PushAi(MultAi *mai) { ai_quene_.push(mai); }
+		void PushAi(MultAi *mai, Actor *master) { ai_quene_.push(make_pair(mai, master)); }
 
 	public:
 		d_vel direct_;
@@ -597,21 +601,7 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		AiQuene ai_quene_;//别人的ai
 		AiContorl ai_control_;//控制别人的ai
 	protected:
-		void AiDrive() { 
-			if (!ai_quene_.empty()) {
-				auto ai = ai_quene_.front();
-				if (ai->Drive(this)) {
-					ai_quene_.pop();
-				}
-				return;
-			}
-			if (!ai_chain_.alive) {
-				ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : (ai_chain_.chain[0]);
-			}
-			if (ai_chain_.alive && ai_chain_.alive->Drive(this)) {
-				SwitchAi();
-			}
-		}
+		void AiDrive();
 
 	public:
 		ns_module::mod_type type_ = ns_module::mod_type::none; //本身类型

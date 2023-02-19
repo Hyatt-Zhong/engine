@@ -155,6 +155,8 @@ public:
 		loop_ = loop;
 	}
 
+	bool IsEnd() { return que_.empty(); }
+
 protected:
 	queue<d_vel> que_;
 	bool loop_ = true;
@@ -196,6 +198,7 @@ Ai *AiLook();
 Ai *AiLine();
 Ai *AiLookAndMove();
 Ai *AiCounterclockwise();
+Ai *AiGeneratLine();
 MultAi *MAiMultCircleRole();
 };
 #endif

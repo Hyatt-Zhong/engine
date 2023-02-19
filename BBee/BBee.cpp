@@ -84,18 +84,17 @@ void main() {
 	sc_start.SetAlive(true);
 	ly_play.SetWorld(MainWorld::Instance());
 	//sc_play.SetAlive(true);
-
-	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\role\\jet.json"));
-	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\npc\\assistant.json"));
-	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\enemy\\enemy.json"));
-	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\bullet\\bullet.json"));
-	ModuleFactory::Instance()->LoadModule<ModuleInstance>(ReadFile("D:\\P\\game-workplace\\first-arpg\\module\\bullet\\FollowBullet.json"));
-	TestMap tmap;
-	tmap.AddTestMod("assistant", "assistant"); //必须加后面的名字
-	tmap.AddTestMod("assistant", "assistant1", width / 2, height / 2); //必须加后面的名字
-	tmap.AddTestMod("assistant", "assistant2", width / 2, height);     //必须加后面的名字
-	tmap.AddTestMod("assistant", "assistant4", width / 2, height/3);     //必须加后面的名字
-	ly_play.SetMap(&tmap);
+	ModuleFactory::Instance()->LoadModules(wx->GetModulePath());
+	//TestMap tmap;
+	//tmap.AddTestMod("assistant", "assistant"); //必须加后面的名字
+	//tmap.AddTestMod("assistant", "assistant1", width / 2, height / 2); //必须加后面的名字
+	//tmap.AddTestMod("assistant", "assistant2", width / 2, height);     //必须加后面的名字
+	//tmap.AddTestMod("assistant", "assistant4", width / 2, height/3);     //必须加后面的名字
+	//ly_play.SetMap(&tmap);
+	CommonMap cmp;
+	MapManager::Instance()->LoadMaps(wx->GetMapPath());
+	auto lv1 = MapManager::Instance()->GetMap("lv1");
+	ly_play.SetMap(lv1);
 	//ly_play.CameraFollow(0, "leadrole");
 
 	Menu mn_pause("pause");

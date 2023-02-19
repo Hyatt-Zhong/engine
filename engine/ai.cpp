@@ -28,6 +28,24 @@ bool Ai::Exist(Actor *actor) {
 	return actor&&!actor->IsDeath();
 }
 
+void MultAi::RemoveMember() {
+	for (auto it = members_.begin(); it != members_.end();) {
+		if (!Exist(it->first)) {
+			it = members_.erase(it);
+		} else {
+			it++;
+		}
+	}
+}
+
+void MultAi::AddMember(Actor *actor, shared_ptr<void> data) {
+	members_[actor] = data;
+}
+
+void MultAi::RemoveMember(Actor *mem) {
+	members_.erase(mem);
+}
+
 bool Scout::ReportFixture(b2Fixture *fixture) {
 	auto body = fixture->GetBody();
 	auto actor = (Actor *)body->GetUserData().pointer;
@@ -223,7 +241,7 @@ bool CircleRole::Drive(Actor *actor) {
 			dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
 			if (Exist(point)) {
 				auto mai = point->FindContorlAi("MAiMultCircleRole");
-				actor->PushAi(mai);
+				actor->PushAi(mai, point);
 				return true;
 			}
 		} else {
@@ -296,6 +314,20 @@ Ai *AiCounterclockwise() {
 	return new Counterclockwise(200);
 }
 
+Ai *AiGeneratLine() {
+	queue<d_vel> que;
+	float xp = 100;
+	que.push(d_vel(-xp, -xp));
+	que.push(d_vel(xp, -2 * xp));
+	que.push(d_vel(-xp, -3 * xp));
+	que.push(d_vel(xp, -4 * xp));
+	que.push(d_vel(-xp, -5 * xp));
+
+	auto ai = new Line;
+	ai->SetLine(que, false);
+	return ai;
+}
+
 MultAi *MAiMultCircleRole() {
 	return new MultCircleRole;
 }
@@ -304,10 +336,7 @@ bool MultCircleRole::Drive(Actor *actor) {
 	auto point = Search(range_, actor, actor->goaltype_);
 	if (point) {
 		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
-		/*auto it = members_.find(actor);
-		if (it != members_.end()) {
-		}*/
-		members_.erase(actor);
+		RemoveMember(actor);
 		return true;
 	} else {
 		auto SetVel = [=](auto &ov) {
@@ -326,14 +355,8 @@ bool MultCircleRole::Drive(Actor *actor) {
 				actor->SetVel(-v);
 				return false;
 			} else /*if (length <= distance_max_ && length >= distance_min_)*/ {
-				for (auto it = members_.begin(); it != members_.end();) {
-					if (!Exist(it->first)) {
-						it = members_.erase(it);
-					} else {
-						it++;
-					}
-				}
-				members_[actor] = nullptr;
+				RemoveMember();
+				AddMember(actor, shared_ptr<void>());
 
 				d_vel v1 = master_->GetCenterB2();
 				b2Rot rt(-k2PI / n_);
@@ -347,8 +370,7 @@ bool MultCircleRole::Drive(Actor *actor) {
 				xv.Normalize();
 				ov = xv;//ov应该是个单位向量，所以需要在乘以速度之前赋值
 				xv *= velocity_small;
-				auto n = members_.size();
-				if (n <= 1) {
+				if (members_.size() <= 1) {
 					actor->SetVel(xv);
 					return true;
 				}

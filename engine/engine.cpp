@@ -85,6 +85,22 @@ void Actor::Update(const unsigned &dt) {
 	AiDrive();
 }
 
+void Actor::AiDrive() {
+	if (!ai_quene_.empty()) {
+		auto ai = ai_quene_.front();
+		if (ai.second->IsDeath() || ai.first->Drive(this)) {
+			ai_quene_.pop();
+		}
+		return;
+	}
+	if (!ai_chain_.alive) {
+		ai_chain_.alive = ai_chain_.chain.empty() ? nullptr : (ai_chain_.chain[0]);
+	}
+	if (ai_chain_.alive && ai_chain_.alive->Drive(this)) {
+		SwitchAi();
+	}
+}
+
 void Layer::CameraFollow(const int &delay, Actor *actor, bool center) {
 	AddFrameEvent([=](void *self) {
 		auto pThis = (Layer *)self;

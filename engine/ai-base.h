@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 #include <queue>
+#include <memory>
+
 namespace ns_engine {
 class Actor;
 class Layer;
@@ -40,6 +42,7 @@ public:
 	bool Exist(Actor *actor);
 	//virtual void *Data() { return nullptr; }
 	//virtual string Name() = 0;
+	virtual bool IsEnd() { return false; }
 
 protected:
 	Actor *master_ = nullptr;
@@ -58,12 +61,15 @@ struct AiChain {
 class MultAi : public Ai {
 public:
 protected:
-	map<Actor *, void *> members_;
+	void RemoveMember(Actor *mem);
+	void RemoveMember(); 
+	void AddMember(Actor *actor, shared_ptr<void> data);
+	map<Actor *, shared_ptr<void>> members_;
 
 private:
 };
 
-using AiQuene = queue<MultAi*>;
+using AiQuene = queue<pair<MultAi*,Actor*>>;
 using AiContorl = map<string,MultAi*>;
 };
 #endif
