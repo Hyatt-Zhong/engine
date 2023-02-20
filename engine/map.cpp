@@ -144,7 +144,7 @@ void CommonMap::CreateOrUpdateActor() {
 		pThis->AddCombo((Combination *)comb);
 	};
 
-	if (cur_combos_.empty()&&!que_.empty()) {
+	if (cur_combos_.empty() && !que_.empty()) {
 		auto ele = que_.front();
 		que_.pop();
 		auto qu = ele.first;
@@ -156,8 +156,7 @@ void CommonMap::CreateOrUpdateActor() {
 				e.comname, layer, Game::Instance()->w_ * e.x, Game::Instance()->h_ * e.y, this, fn);
 		}
 	}
-	if (cur_need_clear)//需要清理，则等待这波角色的死亡
-	{
+	if (cur_need_clear) {//需要清理，则等待这波角色的死亡
 		for (auto it = cur_combos_.begin(); it != cur_combos_.end();) {
 			if ((*it)->IsDeath()) {
 				it = cur_combos_.erase(it);
@@ -165,7 +164,6 @@ void CommonMap::CreateOrUpdateActor() {
 				it++;
 			}
 		}
-		
 	} else {
 		cur_combos_.clear();
 	}

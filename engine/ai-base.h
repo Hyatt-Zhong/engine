@@ -18,15 +18,24 @@ using namespace ns_engine;
 class IntervalCount {
 public:
 	virtual ~IntervalCount() {}
-	bool frame5() { return xcount % 5 == 0; }
-	bool frame10() { return xcount % 10 == 0; }
-	bool frame20() { return xcount % 20 == 0; }
-	bool frame(const int &x) { return xcount % x == 0; }
+	bool frame5() { return xcount % 5 == 1; }
+	bool frame10() { return xcount % 10 == 1; }
+	bool frame20() { return xcount % 20 == 1; }
+	bool frame(const int &x) { return xcount % x == 1; }
+	bool framex(const int &x) { return xcount % x == 0; }
 	void frame() {
 		xcount++;
 		if (xcount >= xmaxcount) {
 			xcount = 0;
 		}
+	}
+	bool frame_with_count(const int &x) {//不必每帧都计算的，使用本函数跳过
+		frame();
+		return frame(x);
+	}
+	bool frame_with_count_ex(const int &x) {
+		frame();
+		return framex(x);
 	}
 
 protected:

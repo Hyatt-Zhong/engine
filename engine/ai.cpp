@@ -8,6 +8,7 @@ const float kPI = 3.1415926f;
 const float k2PI = 6.2831852f;
 const float kPI_2 = 1.5707963f;
 const float kAngle = 57.295779f;
+const int kAiCycle = 2;
 using namespace ns_engine;
 using namespace ns_entity;
 
@@ -100,6 +101,15 @@ vector<Actor*> Scout::SearchMult(const int& range, Actor* point, typeset type, i
 
 
 bool Follow::Drive(Actor *actor) {
+	if (!frame_with_count_ex(kAiCycle * 7)) {
+		if (frame(kAiCycle * 5)) {
+			auto v = dynamic_cast<ModuleInstance *>(actor)->direct_;
+			SetAngle(actor, v);
+			v *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
+			actor->SetVel(v);
+		}
+		return false;	
+	}
 	if (!Exist(point)) {
 		point = Search(range_, actor, actor->goaltype_);
 	}
@@ -119,6 +129,9 @@ bool Follow::Drive(Actor *actor) {
 }
 
 bool Circle::Drive(Actor *actor) {
+	/*if (!frame_with_count(kAiCycle)) {
+		return false;
+	}*/
 	if (!Exist(point_)) {
 		point_ = Search(range_, actor, actor->goaltype_);
 	}
@@ -169,6 +182,9 @@ bool Circle::SetVel(Actor *actor, d_vel v, float length) {
 
 
 bool Move::Drive(Actor *actor) {
+	if (!frame_with_count(kAiCycle*10)) {
+		return false;
+	}
 	auto v = dynamic_cast<ModuleInstance *>(actor)->direct_;
 	SetAngle(actor, v);
 	v *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
@@ -177,6 +193,9 @@ bool Move::Drive(Actor *actor) {
 }
 
 bool Look::Drive(Actor *actor) {
+	if (!frame_with_count(kAiCycle)) {
+		return false;
+	}
 	if (!Exist(point_)) {
 		point_ = Search(range_, actor, actor->goaltype_);
 	}
@@ -196,6 +215,9 @@ bool Look::Drive(Actor *actor) {
 }
 
 bool LookAndMove::Drive(Actor *actor) {
+	if (!frame_with_count(kAiCycle*5)) {
+		return false;
+	}
 	if (!Exist(point_)) {
 		point_ = Search(range_, actor, actor->goaltype_);
 	}
@@ -220,6 +242,9 @@ bool LookAndMove::Drive(Actor *actor) {
 }
 
 bool CircleRole::Drive(Actor *actor) {
+	if (!frame_with_count(kAiCycle*3)) {
+		return false;
+	}
 	auto point = Search(range_, actor, actor->goaltype_);
 	if (point) {
 		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
@@ -254,6 +279,9 @@ bool CircleRole::Drive(Actor *actor) {
 }
 
 bool Line::Drive(Actor *actor) {
+	if (!frame_with_count(kAiCycle)) {
+		return false;
+	}
 	d_vel pos = actor->GetCenterB2();
 	if (!started_) {
 		orgin_ = pos;
@@ -320,8 +348,8 @@ Ai *AiGeneratLine() {
 	que.push(d_vel(-xp, -xp));
 	que.push(d_vel(xp, -2 * xp));
 	que.push(d_vel(-xp, -3 * xp));
-	que.push(d_vel(xp, -4 * xp));
-	que.push(d_vel(-xp, -5 * xp));
+	//que.push(d_vel(xp, -4 * xp));
+	//que.push(d_vel(-xp, -5 * xp));
 
 	auto ai = new Line;
 	ai->SetLine(que, false);
@@ -333,6 +361,9 @@ MultAi *MAiMultCircleRole() {
 }
 
 bool MultCircleRole::Drive(Actor *actor) {
+	/*if (!frame_with_count(kAiCycle)) {
+		return false;
+	}*/
 	auto point = Search(range_, actor, actor->goaltype_);
 	if (point) {
 		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
