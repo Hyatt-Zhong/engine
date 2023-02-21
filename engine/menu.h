@@ -95,5 +95,14 @@ private:
 	float base_width_ = .2f; //每滴血对应的长度
 	bool center = false;
 };
+
+class SkillInfo : public Actor {
+public:
+	SkillInfo() { SetAlive(false); }
+	void OnNotice(void *data);
+
+protected:
+private:
+};
 };
 #endif

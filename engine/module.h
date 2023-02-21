@@ -11,6 +11,9 @@
 namespace ns_weapon {
 class Weapon;
 };
+namespace ns_skill {
+class Skill;
+};
 
 namespace ns_module {
 	using namespace std;
@@ -21,6 +24,7 @@ namespace ns_module {
 	using namespace ns_utily;
 	using namespace ns_map;
 	using namespace ns_menu;
+	using namespace ns_skill;
 
 
 enum generate_type {
@@ -67,6 +71,8 @@ extern map<string, Module::CreateAi> kAiMap;
 extern map<string, Ai*> kExAiMap;
 extern map<string, Module::CreateMultAi> kMAiMap;
 extern map<string, Module::CreateWeapon> kWeaponMap;
+extern map<string, Skill *> kSkillMap;
+
 
 extern map<string, int> kModType;
 extern const string kstrGoalType;
@@ -76,6 +82,7 @@ class ModuleFactory : public single<ModuleFactory> {
 public:
 	void LoadModules(const string &modpath);
 	void LoadAi(const string &strJsn);
+	void LoadSkill(const string &strJsn);
 	template<typename T> 
 	void LoadModule(const string &strJsn) {
 		Json::Value jsn;
@@ -122,11 +129,14 @@ public:
 		return com;
 	}
 
-	template<typename T> void SafeAddToLayer(const string &modname, Layer *layer, const int &x, const int &y, d_vel direct) {
+	template<typename T>
+	void SafeAddToLayer(const string &modname, Layer *layer, typeset goaltype, const int &x, const int &y, const int count=1) {
 		layer->AddFrameEventOnce([=](void *) {
-			auto mod = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y, "");
-			mod->direct_ = direct;
-			layer->GetMap()->AddToManage(mod);
+			for (auto i = 0; i < count; i++) {
+				auto bullet = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y, "");
+				bullet->goaltype_ = goaltype;
+				layer->GetMap()->AddToManage(bullet);
+			}
 		});
 	}
 

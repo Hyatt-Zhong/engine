@@ -2,9 +2,13 @@
 #define ENTITY_H
 #include "module.h"
 #include "weapon.h"
+namespace ns_skill {
+class Skill;
+}
 namespace ns_entity {
 using namespace ns_module;
 using namespace ns_weapon;
+using namespace ns_skill;
 
 class Entity:public Module
 {
@@ -20,10 +24,13 @@ public:
 	void UseWeapon(bool use) { /*use_weapon_ = use;*/ }
 	void Drop();
 	void DeathEffect();
-
+	bool FindSkill(Skill *skill);
+	void PushSkill(Skill *skill);
 	//
 	string drop_;
 	float drop_chance_ = 10;
+	int drop_count_ = 1;
+	string give_skill_;
 	//
 	float life_ = 100.f;
 	float maxlife_ = 100.f;
@@ -41,6 +48,7 @@ private:
 	vector<Weapon *> wps_;
 	vector<Ai *> ais_;
 	vector<MultAi *> mais_;
+	vector<Skill *> skills_;
 };
 using ModuleInstance = Entity;
 

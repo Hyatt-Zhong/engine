@@ -163,10 +163,15 @@ bool RandomMoveOnce::Drive(Actor *actor) {
 		int y = u(re()) - 50;
 		d_vel dv(x, y);
 		dv.Normalize();
+		SetAngle(actor, dv);
+		actor->SetDirect(dv);
 		dv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
 		actor->SetVel(dv);
 		moved = true;
-		return true;
+		return false;
+	}
+	if (!frame_with_count_ex(kAiCycle*5)) {
+		return false;
 	}
 	return true;
 }
@@ -560,6 +565,10 @@ Ai *AiCircleRoleOnly() {
 	return new CircleRoleOnly;
 }
 
+Ai *AiMoveAndDie200() {
+	return new MoveAndDie;
+}
+
 Ai *ExAiCreateLine(const LineData &data) {
 	auto line = new Line;
 	line->SetLine(data.que, data.loop);
@@ -575,6 +584,23 @@ MultAi *MAiMultCircleRole() {
 
 MultAi *MAiMultCircleRoleOnly() {
 	return new MultCircleRoleOnly;
+}
+
+bool MoveAndDie::Drive(Actor *actor) {
+	if (!moved) {
+		orign = actor->GetCenterB2();
+		auto dv = dynamic_cast<ModuleInstance *>(actor)->direct_;
+		dv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
+		actor->SetVel(dv);
+		moved = true;
+	}
+	auto pos = actor->GetCenterB2();
+	pos -= orign;
+	if (pos.Length() >= length) {
+		actor->BeKill();
+		return true;
+	}
+	return false;
 }
 
 };

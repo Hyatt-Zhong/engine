@@ -72,6 +72,19 @@ protected:
 private:
 };
 
+class MoveAndDie:public Ai
+{
+public:
+	bool Drive(Actor *actor);
+
+protected:
+	bool moved = false;
+	int length = 200;
+	d_vel orign;
+
+private:
+};
+
 class Look : public Ai, public Scout {
 public:
 	bool Drive(Actor *actor);
@@ -240,6 +253,7 @@ Ai *AiLookAndMove();
 Ai *AiCounterclockwise();
 Ai *AiGeneratLine();
 Ai *AiCircleRoleOnly();
+Ai *AiMoveAndDie200();
 struct LineData {
 	queue<d_vel> que;
 	bool loop;

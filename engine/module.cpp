@@ -6,12 +6,14 @@
 #include "map.h"
 #include <filesystem>
 #include <set>
+#include "skill.h"
 
 using namespace ns_engine;
 using namespace Json;
 using namespace ns_physic_module;
 using namespace ns_entity;
 using namespace ns_map;
+using namespace ns_skill;
 
 namespace ns_module {
 
@@ -63,6 +65,7 @@ MTYPE_MAP(AiRandomMoveOnce)
 MTYPE_MAP(AiFollow)
 MTYPE_MAP(AiCircle)
 MTYPE_MAP(AiCircleRole)
+MTYPE_MAP(AiMoveAndDie200)
 MTYPE_MAP(AiCircleRoleOnly)
 MTYPE_MAP(AiLook)
 MTYPE_MAP(AiLookAndMove)
@@ -84,7 +87,8 @@ MTYPE_MAP(WPFollowBullet)
 MTYPE_MAP_END
 
 
-map<string,Ai*> kExAiMap;
+map<string, Ai *> kExAiMap;
+map<string, Skill *> kSkillMap;
 
 
 const string kstrAi = "ai";
@@ -173,6 +177,21 @@ void ModuleFactory::LoadAi(const string& strJsn) {
 	}
 }
 
+void ModuleFactory::LoadSkill(const string &strJsn) {
+	Json::Value jsn;
+	if (!ParseJson(strJsn, jsn)) {
+		return;
+	}
+	auto name = jsn["skillname"].asString();
+	auto shot = jsn["shot"].asString();
+	auto cd = jsn["cd"].asInt();
+	auto key = jsn["key"].asString();
+
+	auto skill = new Skill(shot, cd, (SDL_KeyCode)key[0]);
+	
+	kSkillMap[name] = skill;
+}
+
 
 void ModuleFactory::LoadModules(const string &path) {
 	std::filesystem::path src_dir(path); 
@@ -187,7 +206,9 @@ void ModuleFactory::LoadModules(const string &path) {
 			LoadCombination<CombinationInstance>(ReadFile(it));
 		} else if (it.find("\\module\\exai\\") != string::npos) {
 			LoadAi(ReadFile(it));
-		}else {
+		} else if (it.find("\\module\\skill\\") != string::npos) {
+			LoadSkill(ReadFile(it));
+		} else {
 			LoadModule<ModuleInstance>(ReadFile(it));
 		}
 	}

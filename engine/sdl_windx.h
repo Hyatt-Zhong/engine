@@ -130,6 +130,7 @@ namespace ns_sdl_winx {
 		//virtual void OnMMouse(const int &x, const int &y) {}
 
 		void AddKeyEvent(const SDL_Keycode &key, const key_event &hdl) { kevent[key] = hdl; }
+		void RemoveKeyEvent(const SDL_Keycode &key) { kevent.erase(key); }
 
 	protected:
 	private:

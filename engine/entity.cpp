@@ -1,7 +1,7 @@
 #include "entity.h"
 #include "macro-def.h"
 #include <random>
-
+#include "skill.h"
 using namespace ns_engine;
 namespace ns_entity {
 Entity::Entity() {
@@ -15,11 +15,14 @@ Entity::~Entity() {
 		SAFE_DELETE(it);
 	}
 	ais_.clear();
-	for (auto& it:mais_)
-	{
+	for (auto &it : mais_) {
 		SAFE_DELETE(it);
 	}
 	mais_.clear();
+	for (auto &it : skills_) {
+		SAFE_DELETE(it);
+	}
+	skills_.clear();
 }
 void Entity::Init() {
 	Module::Init();
@@ -58,6 +61,8 @@ const string kstrRealDamage = "realdamage";
 const string kstrDrop = "drop";
 const string kstrDropMod = "dropmod";
 const string kstrDropChance = "dropchance";
+const string kstrDropCount = "dropcount";
+const string kstrGiveSkill = "giveskill";
 void Entity::SetParam(const Json::Value &jsn) {
 	Module::SetParam(jsn);
 	auto xmaxlife = JSON_VAL(jsn, kstrMaxLife, Double, MINUS1);
@@ -87,20 +92,29 @@ void Entity::SetParam(const Json::Value &jsn) {
 		auto drop = jsn[kstrDrop];
 		drop_ = drop[kstrDropMod].asString();
 		drop_chance_ = JSON_VAL(drop, kstrDropChance, Double, 10.);
+		drop_count_ = JSON_VAL(drop, kstrDropCount, Int, 1);
 	}
+
+	give_skill_ = JSON_VAL(jsn, kstrGiveSkill, String, "");
 }
 void Entity::Update(const unsigned &dt) {
 	if (life_ <= 0) {
 		BeKill();
-		Drop();
-		DeathEffect();
 	}
+	
 	if (use_weapon_) {
 		for (auto &wp : wps_) {
 			wp->Use();
 		}
 	}
+	for (auto &it : skills_) {
+		it->Update(dt);
+	}
 	Actor::Update(dt);
+	if (IsBeKill()) {
+		Drop();
+		DeathEffect();
+	}
 }
 
 void Entity::OnCollision(Actor *actor) {
@@ -118,6 +132,13 @@ void Entity::OnCollision(Actor *actor) {
 		if (other->type_ .test( bullet)) {
 			other->life_ -= damage_;
 		}
+
+		if (!other->give_skill_.empty()) {
+			auto skill = other->give_skill_;
+			auto sk = kSkillMap[skill]->Copy();
+			PushSkill(sk);
+			sk->Equip();
+		}
 	}
 }
 void Entity::GetSubGeneratePos(int &x, int &y) {
@@ -134,8 +155,22 @@ void Entity::Drop() {
 	uniform_int_distribution<unsigned> u(0, 100);
 	if (u(re()) <= drop_chance_) {
 		auto [xx, yy] = GetCenter();
-		ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>(drop_, parent_, xx, yy, direct_);
+		ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>(drop_, parent_, this->goaltype_, xx, yy, drop_count_);
 	}
 }
 void Entity::DeathEffect() {}
+bool Entity::FindSkill(Skill *skill) {
+	for (auto &it : skills_) {
+		if (it == skill) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void Entity::PushSkill(Skill *skill) {
+	skills_.push_back(skill);
+	skill->SetMaster(this);
+}
+
 };
