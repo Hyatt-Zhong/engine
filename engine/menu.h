@@ -12,43 +12,26 @@ using namespace ns_module;
 
 class Menu : public Layer {
 public:
-	using Layer::Layer;
-	void OnMouseMove(const int& x, const int& y) {
-		auto xx = x;
-		auto yy = y;
-		camera_->Trans(xx, yy);
-		if (InRange(xx, yy)) {}//更新in_range_标志，将自动调用OnHover
-		Layer::OnMouseMove(x, y);
+	//using Layer::Layer;
+	Menu(const string &name) : Layer(name) {
+		//不需要自动清理，比如菜单层
+		auto_clear_sub_ = false;
 	}
+	void OnMouseMove(const int &x, const int &y);
 
-	void OnHover(const int &x, const int &y, const int &w, const int &h) { 
-		Game::Instance()->DrawRect(x, y, w, h, 0x0000ffff);
-	}
+	void OnHover(const int &x, const int &y, const int &w, const int &h);
+
 protected:
 private:
 };
 
 class Button : public Actor {
 public:
-	void OnLMouseUp(const int &x, const int &y) {
-		auto xx = x;
-		auto yy = y;
-		camera_->Trans(xx, yy);
-		if (InRange(xx, yy)) {
-			OnClick();
-		}
-	}
+	void OnLMouseUp(const int &x, const int &y);
 
-	void OnMouseMove(const int& x, const int& y) {
-		auto xx = x;
-		auto yy = y;
-		camera_->Trans(xx, yy);
-		if (InRange(xx, yy)) {}//更新in_range_标志，将自动调用OnHover
-	}
+	void OnMouseMove(const int &x, const int &y);
 
-	void OnHover(const int &x, const int &y, const int &w, const int &h) { 
-		Game::Instance()->DrawRect(x, y, w, h, 0x0000ffff);
-	}
+	void OnHover(const int &x, const int &y, const int &w, const int &h);
 	virtual void OnClick() = 0;
 
 protected:
@@ -71,20 +54,9 @@ public:
 	};
 	Link(const string &goal, LinkType type) : goal_(goal), type_(type) {}
 	Link(const string &goal, bool show) : goal_(goal), type_(kLayer), show_(show) {}
-	void LinkScene(const string &scene) { Game::Instance()->SwitchScene(scene);	}
-	void LinkLayer(const string &layer) { Game::Instance()->ShowLayer(layer, show_); }
-	void OnClick() {
-		switch (type_) {
-		case ns_menu::Link::kScene:
-			LinkScene(goal_);
-			break;
-		case ns_menu::Link::kLayer:
-			LinkLayer(goal_);
-			break;
-		default:
-			break;
-		}
-	}
+	void LinkScene(const string &scene);
+	void LinkLayer(const string &layer);
+	void OnClick();
 
 protected:
 private:
@@ -108,29 +80,20 @@ private:
 class Blood:public Info
 {
 public:
-	using Info::Info;//继承构造函数
-	void Init(float max) {
-		val_ = max;
-		max_ = max;
-		max_length_ = w_;
-	}
-
-	void Change(int val) {
-		val_ += val;
-		auto x = val_ <= 0 ? 0.f : val_ / max_;
-		w_ = x >= 1 ? max_length_ : max_length_ * x;
-	}
-	void OnNotice(void *data) {
-		auto pval = (int *)data;
-		Change(*pval);
-		delete pval;
-	}
+	struct BloodData {
+		float val;
+		float max;
+	};
+	//using Info::Info;//继承构造函数
+	Blood(const string &name) : Info(name) { SetAlive(false); }
+	void Center() { center = true; }
+	void Change(const BloodData &bd);
+	void OnNotice(void *data);
 
 protected:
 private:
-	float val_;
-	float max_;
-	float max_length_;
+	float base_width_ = .2f; //每滴血对应的长度
+	bool center = false;
 };
 };
 #endif

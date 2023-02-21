@@ -13,6 +13,7 @@ MTYPE_BEG(mod_type)
 	MTYPE(none)
 	MTYPE(building)
 	MTYPE(enemy)
+	MTYPE(boss)
 	MTYPE(npc)
 	MTYPE(role)
 	MTYPE(tree)
@@ -36,7 +37,7 @@ using namespace placeholders;
 
 namespace ns_params {
 static float render_distance_ = 3 / 2;//3个视野内
-static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
+static float active_distance_ = 0.55; //1个多一点视野内
 
 };
 	enum AssetType {
@@ -117,6 +118,14 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		void Trans(int &x, int &y) {
 			win_->Offset(x, y, 0, 0);
 			x += x_, y += y_;
+		}
+		void Trans(int &x, int &y,const int& h) {
+			win_->Offset(x, y, 0, h);
+			x += x_, y += y_;
+		}
+
+		void GetCenter(int& cx, int& cy) { cx = center_x_;
+			cy = center_y_;
 		}
 
 	public:
@@ -408,6 +417,9 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		}
 
 		Actor *Leadrol() { return leadrol_; }
+		bool GetDieFlag(int &x, int &y);
+		void SetDieFlag(bool useRole) { use_role_ = useRole; }
+
 		void SetLeadrol(Actor *rol) { leadrol_ = rol; }
 
 		void SwitchScene(const string &name);
@@ -439,6 +451,8 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 
 	protected:
 		Scene *cur_scene_;
+		bool use_role_ = true;
+
 	private:
 		vector<ns_box2d::bx2World *> worlds_;
 		Actor *leadrol_;
@@ -490,6 +504,8 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 			}
 		}
 
+	public:
+		bool auto_clear_sub_ = true;//自动清理对象，但有的不需要自动清理，比如菜单层
 	protected:
 		ns_map::Map *map_ = nullptr;
 	private:
@@ -500,23 +516,7 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 	public:
 		Actor() : is_death_(false), vel_(0, 0), create_body_(nullptr),
 			type_(ns_module::mod_type::none), goaltype_(0),direct_(0.,1.) {}
-		void AutoDie() {
-			auto leadrol = Game::Instance()->Leadrol();
-			if (leadrol == nullptr || leadrol == this/*|| !parent_->Exist(leadrol)*/ ){
-				return;
-			}
-			auto x = leadrol->x_;
-			auto y = leadrol->y_;
-			auto w = parent_->w_;
-			auto h = parent_->h_;
-			w *= ns_params::active_distance_;
-			h *= ns_params::active_distance_;
-			auto x_dt = abs(x_ - x);
-			auto y_dt = abs(y_ - y);
-			if (!(x_dt < w && y_dt < h)) {
-				is_death_ = true;
-			}
-		}
+		void AutoDie();
 
 		void SetVel(const d_vel &v) {
 			auto bx2_drive = ns_box2d::MainWorld::Instance()->IsBx2Drive();
@@ -552,6 +552,11 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		}
 
 		void Death() { is_death_ = true; }
+		void BeKill() {
+			is_death_ = true;
+			be_kill_ = true;
+		}
+		bool IsBeKill() { return be_kill_; }
 		bool IsDeath() { return is_death_; }
 		void Destroy() { is_destroy_ = true; }
 		virtual bool IsDestroy() { return is_destroy_; }
@@ -592,7 +597,9 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		d_vel direct_;
 		
 	protected:
+		float autodie_ = 1.f;
 		bool is_death_;
+		bool be_kill_ = false;
 		bool is_destroy_ = false;
 		d_vel vel_;
 		d_vel bx2_vel_;
@@ -604,10 +611,12 @@ static float active_distance_ = 1.2; /*0.75;*/ //1个多一点视野内
 		void AiDrive();
 
 	public:
-		ns_module::mod_type type_ = ns_module::mod_type::none; //本身类型
+		ns_module::typeset type_ = 0;							//本身类型
 		ns_module::typeset goaltype_ = 0;                      //敌对的类型
 	private:
 	};
+
+	default_random_engine &re();
 	
 	};
 #endif // !ENGINE_H

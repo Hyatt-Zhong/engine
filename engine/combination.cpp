@@ -52,6 +52,9 @@ Generator::Generator() {
 }
 
 bool Generator::Drive(Actor *actor) {
+	if (ai_name_.empty()) {
+		return true;
+	}
 	auto it = members_.find(actor);
 	if (it == members_.end()) {
 		shared_ptr<Ai> ai(kAiMap[ai_name_]());

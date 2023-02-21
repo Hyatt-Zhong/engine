@@ -62,6 +62,16 @@ protected:
 private:
 };
 
+class RandomMoveOnce : public Ai {
+public:
+	bool Drive(Actor *actor);
+	//AI_NAME(string("Move")+T)
+protected:
+	bool moved = false;
+
+private:
+};
+
 class Look : public Ai, public Scout {
 public:
 	bool Drive(Actor *actor);
@@ -124,7 +134,30 @@ protected:
 private:
 };
 
+class CircleRoleOnly : public Circle {
+public:
+	bool Drive(Actor *actor);
+
+protected:
+private:
+};
+
 class MultCircleRole : public MultAi, public Scout {
+public:
+	bool Drive(Actor *actor);
+	void SetClockwise(bool ck) { ck_ = ck; }
+
+protected:
+private:
+	float distance_min_ = distance - distance_dt;
+	float distance_max_ = distance + distance_dt;
+	float dis_ = distance;
+
+	int n_ = 24;
+	bool ck_ = true;
+};
+
+class MultCircleRoleOnly : public MultAi, public Scout {
 public:
 	bool Drive(Actor *actor);
 	void SetClockwise(bool ck) { ck_ = ck; }
@@ -142,8 +175,8 @@ private:
 class Line:public Ai
 {
 public:
-	Line() {}
-	Line(float xp) {
+	Line() : direct_(0,1) {}
+	Line(float xp) :direct_(0, 1) {
 		que_.push(d_vel(xp, 0));
 		que_.push(d_vel(0, xp));
 		que_.push(d_vel(-xp, 0));
@@ -156,6 +189,12 @@ public:
 	}
 
 	bool IsEnd() { return que_.empty(); }
+	Ai *Copy() { return new Line(*this); }
+
+public:
+	bool fixed_angle_ = false;
+	d_vel direct_;
+	float angle_ = 180.f;
 
 protected:
 	queue<d_vel> que_;
@@ -191,6 +230,7 @@ using Counterclockwise = Patrol<'F'>;
 
 
 Ai *AiMove();
+Ai *AiRandomMoveOnce();
 Ai *AiCircle();
 Ai *AiFollow();
 Ai *AiCircleRole();
@@ -199,6 +239,17 @@ Ai *AiLine();
 Ai *AiLookAndMove();
 Ai *AiCounterclockwise();
 Ai *AiGeneratLine();
+Ai *AiCircleRoleOnly();
+struct LineData {
+	queue<d_vel> que;
+	bool loop;
+	bool fixed;
+	float directx;
+	float directy;
+	float angle;
+};
+Ai *ExAiCreateLine(const LineData& data);
 MultAi *MAiMultCircleRole();
+MultAi *MAiMultCircleRoleOnly();
 };
 #endif

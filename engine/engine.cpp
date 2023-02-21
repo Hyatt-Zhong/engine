@@ -33,6 +33,24 @@ void Game::OnNotice(const string& layer, const string& actor, void* data) {
 	pActor->OnNotice(data);
 }
 
+bool Game::GetDieFlag(int &x, int &y) {
+	if (use_role_) {
+		if (leadrol_) {
+			x = leadrol_->x_, y = leadrol_->y_;
+			return true;
+		} else {
+			return false;
+		}
+	} else {
+		if (camera_) {
+			camera_->GetCenter(x, y);
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
 
 void Scene::ShowLayer(const string &name, bool show, bool monopoly) {
 	auto layer = FindSub(name);
@@ -55,7 +73,9 @@ void Scene::ShowLayer(const string &name, bool show, bool monopoly) {
 void Layer::RemoveDeath() {
 	for (auto it = sub_.begin(); it != sub_.end();) {
 		if ((*it)->IsDeath()) {
-			world_->Destroy(*it);
+			if (world_) {
+				world_->Destroy(*it);
+			}
 			(*it)->Destroy();
 			it = sub_.erase(it);
 		} else {
@@ -88,7 +108,7 @@ void Actor::Update(const unsigned &dt) {
 void Actor::AiDrive() {
 	if (!ai_quene_.empty()) {
 		auto ai = ai_quene_.front();
-		if (ai.second->IsDeath() || ai.first->Drive(this)) {
+		if (ai.second->IsDeath() ||ai.first==nullptr|| ai.first->Drive(this)) {
 			ai_quene_.pop();
 		}
 		return;
@@ -98,6 +118,27 @@ void Actor::AiDrive() {
 	}
 	if (ai_chain_.alive && ai_chain_.alive->Drive(this)) {
 		SwitchAi();
+	}
+}
+
+void Actor::AutoDie() {
+	if (!parent_->auto_clear_sub_) {
+		return;
+	}
+	int x, y;
+	if (!Game::Instance()->GetDieFlag(x, y)) {
+		return;
+	}
+
+	auto w = parent_->w_;
+	auto h = parent_->h_;
+	auto xn = ns_params::active_distance_ * autodie_;
+	w *= xn;
+	h *= xn;
+	auto x_dt = abs(x_ - x);
+	auto y_dt = abs(y_ - y);
+	if (!(x_dt < w && y_dt < h)) {
+		is_death_ = true;
 	}
 }
 
@@ -142,6 +183,15 @@ bool Layer::Exist(Actor* actor) {
 void Layer::SetMap(ns_map::Map *map) {
 	map_ = map;
 	map->SetLayer(this);
+}
+
+default_random_engine *common_random_engine = nullptr;
+default_random_engine &re() {
+	if (!common_random_engine) {
+		random_device rd;
+		common_random_engine = new default_random_engine{rd()};
+	}
+	return *common_random_engine;
 }
 
 }

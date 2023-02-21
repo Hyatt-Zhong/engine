@@ -45,7 +45,7 @@ void main()
 
 	Scene scene;
 	Layer layer;
-	Actor actor(SampleFunc);
+	Actor actor(NoCollFunc);
 
 	wx->AddSub(&scene);
 	scene.AddSub(&layer);
@@ -71,7 +71,7 @@ void main()
 	//layer.AddAssetAnimation("layer.png", 0, 0);
 
 	AddActor(layer, actor, 0, 0, 50, 40);
-	Actor second(SampleFunc);
+	Actor second(NoCollFunc);
 	AddActor(layer, second, 80, 80, 50, 40);
 
 	Layer menu;
@@ -108,7 +108,7 @@ void main()
 		[](auto &&xx, auto &&yy, auto &&button, Layer* layer) {
 			if (button == 1) { //left button
 				auto actor = new bullet;
-				actor->SetCreateBodyFunc(SampleFunc);
+				actor->SetCreateBodyFunc(NoCollFunc);
 				auto x = xx, y = yy;
 				layer->camera_->Trans(x, y);
 				AddActor(*layer, *actor, x, y, 50, 40, true);

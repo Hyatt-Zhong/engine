@@ -10,6 +10,8 @@ using namespace ns_engine;
 using namespace ns_box2d;
 using namespace ns_module;
 
-b2Body *SampleFunc(Actor *actor);
+b2Body *NoCollFunc(Actor *actor);
+b2Body *CollFunc(Actor *actor);
+b2Body *CollNoRestiFunc(Actor *actor);
 };
 #endif

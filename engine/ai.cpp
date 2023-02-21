@@ -3,6 +3,7 @@
 #include "engine.h"
 #include "weapon.h"
 #include "entity.h"
+#include <random>
 
 const float kPI = 3.1415926f;
 const float k2PI = 6.2831852f;
@@ -50,13 +51,16 @@ void MultAi::RemoveMember(Actor *mem) {
 bool Scout::ReportFixture(b2Fixture *fixture) {
 	auto body = fixture->GetBody();
 	auto actor = (Actor *)body->GetUserData().pointer;
+	if (!actor) {
+		return true;
+	}
 	if (search_one_) {
-		if (goal_type_.test(actor->type_)) {
+		if ((goal_type_ & (actor->type_)) != 0) {
 			result_ = actor;
 			return false;
 		}
 	} else {
-		if (goal_type_.test(actor->type_)) {
+		if ((goal_type_ & (actor->type_)) != 0) {
 			results_.push_back(actor);
 			return results_.size() >= search_count;
 		}
@@ -152,6 +156,21 @@ bool Circle::Drive(Actor *actor) {
 	return false;
 }
 
+bool RandomMoveOnce::Drive(Actor *actor) {
+	if (!moved) {
+		uniform_int_distribution<unsigned> u(0, 100);
+		int x = u(re()) - 50;
+		int y = u(re()) - 50;
+		d_vel dv(x, y);
+		dv.Normalize();
+		dv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
+		actor->SetVel(dv);
+		moved = true;
+		return true;
+	}
+	return true;
+}
+
 bool Circle::SetVel(Actor *actor, d_vel v, float length) {
 	if (length > distance_max_) {
 		v *= velocity_big;
@@ -207,7 +226,7 @@ bool Look::Drive(Actor *actor) {
 		actor->SetDirect(v);
 		SetAngle(actor, v);
 		actor->SetVel(d_vel(0,0));
-		return false;
+		return true;
 	} else {
 		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);
 	}
@@ -293,8 +312,13 @@ bool Line::Drive(Actor *actor) {
 	xv -= pos;
 	auto length = xv.Normalize();
 
-	actor->SetDirect(xv);
-	SetAngle(actor, xv);
+	if (!fixed_angle_) {
+		actor->SetDirect(xv);
+		SetAngle(actor, xv);
+	} else {
+		actor->SetDirect(direct_);
+		actor->angle_ = angle_;
+	}
 	xv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
 	actor->SetVel(xv);
 
@@ -307,10 +331,186 @@ bool Line::Drive(Actor *actor) {
 	return true;
 }
 
+bool MultCircleRole::Drive(Actor *actor) {
+	/*if (!frame_with_count(kAiCycle)) {
+		return false;
+	}*/
+	auto point = Search(range_, actor, actor->goaltype_);
+	if (point) {
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
+		RemoveMember(actor);
+		return true;
+	} else {
+		auto SetVel = [=](auto &ov) {
+			d_vel pos = actor->GetCenterB2();
+			d_vel v = master_->GetCenterB2();
+			v -= pos;
+			auto length = v.Normalize();
+			if (length >= distance_max_) {
+				ov = v; //ov应该是个单位向量，所以需要在乘以速度之前赋值
+				v *= velocity_big;
+				actor->SetVel(v);
+				return false;
+			} else if (length <= distance_min_) {
+				ov = v; //ov应该是个单位向量，所以需要在乘以速度之前赋值
+				v *= velocity_big;
+				actor->SetVel(-v);
+				return false;
+			} else /*if (length <= distance_max_ && length >= distance_min_)*/ {
+				RemoveMember();
+				AddMember(actor, shared_ptr<void>());
 
+				d_vel v1 = master_->GetCenterB2();
+				b2Rot rt(-k2PI / n_);
+				if (!ck_) {
+					rt.Set(k2PI / n_);
+				}
+				auto vv = b2Mul(rt, v);
+				vv *= dis_;
+				v1 -= vv;
+				d_vel xv(v1.x - actor->GetCenter().x, v1.y - actor->GetCenter().y);
+				xv.Normalize();
+				ov = xv; //ov应该是个单位向量，所以需要在乘以速度之前赋值
+				xv *= velocity_small;
+				if (members_.size() <= 1) {
+					actor->SetVel(xv);
+					return true;
+				}
+				//前面先算出速度，这里找到最近的另一个僚机，如果本僚机在这个僚机的前面，本僚机的速度乘以2
+				d_vel xdt(distance, distance);
+				for (auto &it : members_) {
+					if (it.first == actor) {
+						continue;
+					}
+					auto xvv = pos - it.first->GetCenterB2();
+					if (xvv.Length() < xdt.Length()) {
+						xdt = xvv;
+					}
+				}
+
+				auto cosangle = b2Dot(xdt, xv) / (xdt.Length() * xv.Length());
+				if (cosangle > 0) {
+					//本僚机的速度乘以2
+					xv *= 2;
+				}
+				actor->SetVel(xv);
+				return true;
+			}
+			/*return true;*/
+		};
+		d_vel v;
+		auto up = SetVel(v);
+		if (up) {
+			auto uv = d_vel(0, 1);
+			actor->SetDirect(uv);
+			SetAngle(actor, uv);
+			dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
+		} else {
+			actor->SetDirect(v);
+			SetAngle(actor, v);
+			dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);
+		}
+	}
+	return false;
+}
+
+bool CircleRoleOnly::Drive(Actor *actor) {
+	auto point = Game::Instance()->Leadrol();
+	if (!point) {
+		return true;
+	}
+	if (Exist(point)) {
+		auto mai = point->FindContorlAi("MAiMultCircleRoleOnly");
+		actor->PushAi(mai, point);
+		return true;
+	}
+	return false;
+}
+
+bool MultCircleRoleOnly::Drive(Actor *actor) {
+	auto SetVel = [=](auto &ov) {
+		d_vel pos = actor->GetCenterB2();
+		d_vel v = master_->GetCenterB2();
+		v -= pos;
+		auto length = v.Normalize();
+		if (length >= distance_max_) {
+			ov = v; //ov应该是个单位向量，所以需要在乘以速度之前赋值
+			v *= velocity_big;
+			actor->SetVel(v);
+			return false;
+		} else if (length <= distance_min_) {
+			ov = v; //ov应该是个单位向量，所以需要在乘以速度之前赋值
+			v *= velocity_big;
+			actor->SetVel(-v);
+			return false;
+		} else /*if (length <= distance_max_ && length >= distance_min_)*/ {
+			RemoveMember();
+			AddMember(actor, shared_ptr<void>());
+
+			d_vel v1 = master_->GetCenterB2();
+			b2Rot rt(-k2PI / n_);
+			if (!ck_) {
+				rt.Set(k2PI / n_);
+			}
+			auto vv = b2Mul(rt, v);
+			vv *= dis_;
+			v1 -= vv;
+			d_vel xv(v1.x - actor->GetCenter().x, v1.y - actor->GetCenter().y);
+			xv.Normalize();
+			ov = xv; //ov应该是个单位向量，所以需要在乘以速度之前赋值
+			xv *= velocity_small;
+			if (members_.size() <= 1) {
+				actor->SetVel(xv);
+				return true;
+			}
+			//前面先算出速度，这里找到最近的另一个僚机，如果本僚机在这个僚机的前面，本僚机的速度乘以2
+			d_vel xdt(distance, distance);
+			for (auto &it : members_) {
+				if (it.first == actor) {
+					continue;
+				}
+				auto xvv = pos - it.first->GetCenterB2();
+				if (xvv.Length() < xdt.Length()) {
+					xdt = xvv;
+				}
+			}
+
+			auto cosangle = b2Dot(xdt, xv) / (xdt.Length() * xv.Length());
+			if (cosangle > 0) {
+				//本僚机的速度乘以2
+				xv *= 2;
+			}
+			actor->SetVel(xv);
+			return true;
+		}
+		/*return true;*/
+	};
+	d_vel v;
+	auto up = SetVel(v);
+	auto uv = d_vel(0, 1);
+	actor->SetDirect(uv);
+	SetAngle(actor, uv);
+	dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
+	/*if (up) {
+		auto uv = d_vel(0, 1);
+		actor->SetDirect(uv);
+		SetAngle(actor, uv);
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
+	} else {
+		actor->SetDirect(v);
+		SetAngle(actor, v);
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);
+	}*/
+	return false;
+}
 
 Ai *AiMove() {
 	auto ai = new Move;
+	return ai;
+}
+
+Ai *AiRandomMoveOnce() {
+	auto ai = new RandomMoveOnce;
 	return ai;
 }
 
@@ -356,91 +556,25 @@ Ai *AiGeneratLine() {
 	return ai;
 }
 
+Ai *AiCircleRoleOnly() {
+	return new CircleRoleOnly;
+}
+
+Ai *ExAiCreateLine(const LineData &data) {
+	auto line = new Line;
+	line->SetLine(data.que, data.loop);
+	line->fixed_angle_ = data.fixed;
+	line->angle_ = data.angle;
+	line->direct_ = d_vel(data.directx, data.directy);
+	return line;
+}
+
 MultAi *MAiMultCircleRole() {
 	return new MultCircleRole;
 }
 
-bool MultCircleRole::Drive(Actor *actor) {
-	/*if (!frame_with_count(kAiCycle)) {
-		return false;
-	}*/
-	auto point = Search(range_, actor, actor->goaltype_);
-	if (point) {
-		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
-		RemoveMember(actor);
-		return true;
-	} else {
-		auto SetVel = [=](auto &ov) {
-			d_vel pos = actor->GetCenterB2();
-			d_vel v = master_->GetCenterB2();
-			v -= pos;
-			auto length = v.Normalize();
-			if (length >= distance_max_) {
-				ov = v;//ov应该是个单位向量，所以需要在乘以速度之前赋值
-				v *= velocity_big;
-				actor->SetVel(v);
-				return false;
-			} else if (length <= distance_min_) {
-				ov = v;//ov应该是个单位向量，所以需要在乘以速度之前赋值
-				v *= velocity_big;
-				actor->SetVel(-v);
-				return false;
-			} else /*if (length <= distance_max_ && length >= distance_min_)*/ {
-				RemoveMember();
-				AddMember(actor, shared_ptr<void>());
-
-				d_vel v1 = master_->GetCenterB2();
-				b2Rot rt(-k2PI / n_);
-				if (!ck_) {
-					rt.Set(k2PI / n_);
-				}
-				auto vv = b2Mul(rt, v);
-				vv *= dis_;
-				v1 -= vv;
-				d_vel xv(v1.x - actor->GetCenter().x, v1.y - actor->GetCenter().y);
-				xv.Normalize();
-				ov = xv;//ov应该是个单位向量，所以需要在乘以速度之前赋值
-				xv *= velocity_small;
-				if (members_.size() <= 1) {
-					actor->SetVel(xv);
-					return true;
-				}
-				//前面先算出速度，这里找到最近的另一个僚机，如果本僚机在这个僚机的前面，本僚机的速度乘以2
-				d_vel xdt(distance, distance);
-				for (auto &it : members_) {
-					if (it.first == actor) {
-						continue;
-					}
-					auto xvv = pos - it.first->GetCenterB2();
-					if (xvv.Length() < xdt.Length()) {
-						xdt = xvv;
-					}
-				}
-
-				auto cosangle = b2Dot(xdt, xv) / (xdt.Length() * xv.Length());
-				if (cosangle > 0) {
-					//本僚机的速度乘以2
-					xv *= 2;
-				} 
-				actor->SetVel(xv);
-				return true;
-			}
-			/*return true;*/
-		};
-		d_vel v;
-		auto up = SetVel(v);
-		if (up) {
-			auto uv = d_vel(0, 1);
-			actor->SetDirect(uv);
-			SetAngle(actor, uv);
-			dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
-		} else {
-			actor->SetDirect(v);
-			SetAngle(actor, v);
-			dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);
-		}
-	}
-	return false;
+MultAi *MAiMultCircleRoleOnly() {
+	return new MultCircleRoleOnly;
 }
 
 };

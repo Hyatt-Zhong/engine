@@ -18,6 +18,7 @@ namespace ns_module {
 MTYPE_MAP_BEG(string, int, kModType)
 MTYPE_MAP(building)
 MTYPE_MAP(enemy)
+MTYPE_MAP(boss)
 MTYPE_MAP(npc)
 MTYPE_MAP(role)
 MTYPE_MAP(tree)
@@ -50,15 +51,19 @@ MTYPE_MAP_END
 
 
 MTYPE_MAP_BEG(string, Actor::CreateBodyFunc, kCreateBody)
-MTYPE_MAP(SampleFunc)
+MTYPE_MAP(NoCollFunc)
+MTYPE_MAP(CollFunc)
+MTYPE_MAP(CollNoRestiFunc)
 MTYPE_MAP_END
 
 
 MTYPE_MAP_BEG(string, Module::CreateAi, kAiMap)
 MTYPE_MAP(AiMove)
+MTYPE_MAP(AiRandomMoveOnce)
 MTYPE_MAP(AiFollow)
 MTYPE_MAP(AiCircle)
 MTYPE_MAP(AiCircleRole)
+MTYPE_MAP(AiCircleRoleOnly)
 MTYPE_MAP(AiLook)
 MTYPE_MAP(AiLookAndMove)
 MTYPE_MAP(AiLine)
@@ -69,6 +74,7 @@ MTYPE_MAP_END
 
 MTYPE_MAP_BEG(string, Module::CreateMultAi, kMAiMap)
 MTYPE_MAP(MAiMultCircleRole)
+MTYPE_MAP(MAiMultCircleRoleOnly)
 MTYPE_MAP_END
 
 
@@ -78,20 +84,24 @@ MTYPE_MAP(WPFollowBullet)
 MTYPE_MAP_END
 
 
+map<string,Ai*> kExAiMap;
+
+
 const string kstrAi = "ai";
 const string kstrMAi = "mai";
 const string kstrWeapon = "weapon";
 const string kstrGoalType = "goaltype";
+const string kstrType = "type";
 void Module::SetParam(const Value &jsn) {
-	auto mtype = jsn["type"].asString();
 	auto w = jsn["w"].asInt();
 	auto h = jsn["h"].asInt();
 	auto collw = jsn["collw"].asInt();
 	auto collh = jsn["collh"].asInt();
 
-	auto bodyFunc = jsn.isMember("bodyfunc") ? jsn["bodyfunc"].asString() : "SampleFunc";
+	auto bodyFunc = jsn.isMember("bodyfunc") ? jsn["bodyfunc"].asString() : "NoCollFunc";
 	auto generate = jsn.isMember("generate_type") ? jsn["generate_type"].asString() : "common";
 	auto center = jsn.isMember("center") ? jsn["center"].asBool() : true;
+	auto autodie = JSON_VAL(jsn, "autodie", Double, 1.);
 	/*auto ai = jsn.isMember("ai") ? jsn["ai"].asString() : "";
 	auto WP = jsn.isMember("weapon") ? jsn["weapon"].asString() : "";*/
 
@@ -119,11 +129,17 @@ void Module::SetParam(const Value &jsn) {
 		}
 	}
 
+	if (jsn.isMember(kstrType) && jsn[kstrType].isArray()) {
+		for (auto &it : jsn[kstrType]) {
+			type_.set((mod_type)kModType[it.asString()]);
+		}
+	}
+
 	is_center_ = center;
 	SetSize(w, h);
-	type_ = (mod_type)kModType[mtype];
 	gtype_ = (generate_type)kGenerate[generate];
 	SetCreateBodyFunc(kCreateBody[bodyFunc]);
+	autodie_ = autodie;
 
 	for (auto &ani : jsn["animat"]) {
 		auto stat = ani["state"].asString();
@@ -133,6 +149,30 @@ void Module::SetParam(const Value &jsn) {
 		AddAssetAnimation(pic, dt, kModDirect[stat]);
 	}
 }
+
+void ModuleFactory::LoadAi(const string& strJsn) {
+	Json::Value jsn;
+	if (!ParseJson(strJsn, jsn)) {
+		return;
+	}
+	auto name = jsn["ainame"].asString();
+	auto func = jsn["createfunc"].asString();
+	if (func == "ExAiCreateLine") {
+		LineData ld;
+		ld.loop = jsn["loop"].asBool();
+		ld.fixed = jsn["fixedangle"].asBool();
+		ld.directx = jsn["directx"].asDouble();
+		ld.directy = jsn["directy"].asDouble();
+		ld.angle = jsn["angle"].asDouble();
+		auto w = Game::Instance()->w_;
+		auto h = Game::Instance()->h_;
+		for (auto &it : jsn["seq"]) {
+			ld.que.push(d_vel(it["x"].asDouble() * w, it["y"].asDouble() * h));
+		}
+		kExAiMap[name] = ExAiCreateLine(ld);
+	}
+}
+
 
 void ModuleFactory::LoadModules(const string &path) {
 	std::filesystem::path src_dir(path); 
@@ -145,12 +185,15 @@ void ModuleFactory::LoadModules(const string &path) {
 	for (auto &it : dir_set) {
 		if (it.find("\\module\\combination\\") != string::npos) {
 			LoadCombination<CombinationInstance>(ReadFile(it));
-		} else {
+		} else if (it.find("\\module\\exai\\") != string::npos) {
+			LoadAi(ReadFile(it));
+		}else {
 			LoadModule<ModuleInstance>(ReadFile(it));
 		}
 	}
 }
-	void ModuleFactory::UnLoadModules() {
+
+void ModuleFactory::UnLoadModules() {
 	for (auto &it : mods) {
 		SAFE_DELETE(it.second);
 	}
@@ -177,41 +220,6 @@ void ModuleFactory::AddToLayer(Module* mod, Layer *layer, const int &x, const in
 	mod->SetPostion(x, y, mod->is_center_);
 	if (layer->world_) {
 		layer->world_->RelateWorld(mod);
-	}
-
-	if (mod->type_ == role) {
-		mod->AddFrameEvent([](void *self) {
-			Actor *actor = (Actor *)self;
-			auto x = 0, y = 0;
-			auto vel = 10;
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_D)) {
-				x = vel;
-			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_A)) {
-				x = -vel;
-			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_W)) {
-				y = vel;
-			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
-				y = -vel;
-			}
-			actor->SetVel(d_vel(x, y));
-			
-			if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(1)) {
-				auto n = 20;
-				static int count = 0;
-				if (count % n == n-1) {
-					auto master = actor;
-					int x, y;
-					dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
-					ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master,
-												  x, y, "");
-					count = 0;
-				}
-				count++;
-			}
-		});
 	}
 }
 

@@ -17,10 +17,12 @@ using namespace ns_module;
 using namespace ns_utily;
 using namespace ns_combination;
 
+using RoleCreateEvent = void (*)(void *);
 class Map {
 public:
 	virtual ~Map() {}
 	virtual void CreateOrUpdateActor() = 0;
+	void SetRoleCreateEvent(RoleCreateEvent ce) { ce_ = ce; }
 	void SetLayer(Layer *ly) { layer = ly; }
 
 	void AddToManage(Actor *actor);
@@ -29,10 +31,10 @@ public:
 protected:
 	Layer *layer = nullptr;
 	vector<Actor *> actors;
+	RoleCreateEvent ce_;
 
 private:
 };
-
 
 class CommonMap : public Map {
 public:

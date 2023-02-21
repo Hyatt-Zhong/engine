@@ -3,6 +3,7 @@
 #include "combination.h"
 #include <filesystem>
 #include <set>
+#include "menu.h"
 
 using namespace ns_engine;
 using namespace ns_module;
@@ -77,7 +78,7 @@ void Map::AddToManage(Actor *actor) {
 void Map::Clear() {
 	for (auto it = actors.begin(); it != actors.end();) {
 		if ((*it)->IsDestroy()) {
-			if ((*it)->type_ == role) {
+			if ((*it)->type_ .test( role)) {
 				Game::Instance()->SetLeadrol(nullptr);
 			}
 			ModuleFactory::Instance()->DestroyModule(layer, *it);
@@ -129,14 +130,9 @@ void CommonMap::CreateOrUpdateActor() {
 									     Game::Instance()->h_ * rdata_.y);
 		AddToManage(actor);
 		Game::Instance()->SetLeadrol(actor);
-		actor->AddKeyEvent(SDLK_t, [this](const SDL_Keycode &key, const Uint32 &up_or_down, void *data) {
-			if (up_or_down == SDL_KEYUP) {
-				auto master = (Actor *)data;
-				int x, y;
-				dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
-				ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", layer, master, x, y, "");
-			}
-		});
+		if (ce_) {
+			ce_(actor);
+		}
 		rdata_.life--;
 	}
 	auto fn = [](void *mp, void *comb) {

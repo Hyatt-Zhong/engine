@@ -47,13 +47,14 @@ void AddButton(Layer &layer, Actor &actor, int x, int y, int w, int h, bool cent
 
 
 const int width = 1000;
-const int height = 800;
+const int height = 600;
 
 #undef main
 void main() {
 	auto wx = Game::Instance();
 	wx->SetPath("D:\\P\\game-bee");
 	wx->Create(width, height);
+	wx->SetDieFlag(false);
 
 	Scene sc_start("start");
 	Menu mn_start("start");
@@ -83,6 +84,18 @@ void main() {
 
 	sc_start.SetAlive(true);
 	ly_play.SetWorld(MainWorld::Instance());
+
+		Actor limit_bottom;
+	AddActorWithoutTexture(ly_play, limit_bottom, 0, 0, width, 1);
+	
+		Actor limit_top;
+	AddActorWithoutTexture(ly_play, limit_top, 0, height, width, 1);
+	
+		Actor limit_left;
+	AddActorWithoutTexture(ly_play, limit_left, 0, 0, 1, height);
+	
+		Actor limit_right;
+	AddActorWithoutTexture(ly_play, limit_right, width - 1, 0, 1, height);
 	//sc_play.SetAlive(true);
 	ModuleFactory::Instance()->LoadModules(wx->GetModulePath());
 	//TestMap tmap;
@@ -91,9 +104,62 @@ void main() {
 	//tmap.AddTestMod("assistant", "assistant2", width / 2, height);     //必须加后面的名字
 	//tmap.AddTestMod("assistant", "assistant4", width / 2, height/3);     //必须加后面的名字
 	//ly_play.SetMap(&tmap);
-	CommonMap cmp;
 	MapManager::Instance()->LoadMaps(wx->GetMapPath());
 	auto lv1 = MapManager::Instance()->GetMap("lv1");
+	lv1->SetRoleCreateEvent([](void *role) {
+		auto actor = (Actor *)role;
+		actor->AddKeyEvent(SDLK_t, [=](const SDL_Keycode &key, const Uint32 &up_or_down, void *data) {
+			if (up_or_down == SDL_KEYUP) {
+				auto master = actor;
+				int x, y;
+				dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
+				ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master, x, y,
+											  "");
+			}
+		});
+		actor->AddFrameEvent([](void *self) {
+			auto data = new ns_menu::Blood::BloodData;
+			auto rolex = (ModuleInstance *)self;
+			data->val = rolex->life_;
+			data->max = rolex->maxlife_;
+			Game::Instance()->OnNotice("info", "bd_role", data);
+		});
+
+		actor->AddFrameEvent([](void *self) {
+			Actor *actor = (Actor *)self;
+			auto x = 0, y = 0;
+			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_D)) {
+				x = 1;
+			}
+			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_A)) {
+				x = -1;
+			}
+			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_W)) {
+				y = 1;
+			}
+			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
+				y = -1;
+			}
+			d_vel xv(x, y);
+			xv.Normalize();
+			xv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
+			actor->SetVel(xv);
+
+			if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(1)) {
+				auto n = 20;
+				static int count = 0;
+				if (count % n == n - 1) {
+					auto master = actor;
+					int x, y;
+					dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
+					ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master,
+												  x, y, "");
+					count = 0;
+				}
+				count++;
+			}
+		});
+	});
 	ly_play.SetMap(lv1);
 	//ly_play.CameraFollow(0, "leadrole");
 
@@ -109,6 +175,26 @@ void main() {
 	ac_continue.AddAssetAnimation("continue.png", 0, 0);
 	ac_gomain.AddAssetAnimation("main-menu.png", 0, 0);
 	mn_pause.InitAlive(false);
+
+	Layer ly_info("info");
+	sc_play.AddSub(&ly_info);
+	ly_info.SetPostion(0, 0, false);
+	ly_info.SetSize(width, height);
+
+	Blood bd_role("bd_role");
+	{
+		int x = 0, h = 10, y = height - h, w = 1;
+		AddButton(ly_info, bd_role, x, y, w, h);
+		bd_role.AddAssetAnimation("blood.png", 0, 0);
+	}
+
+	Blood bd_boss("bd_boss");
+	{
+		bd_boss.Center();
+		int x = 0, h = 10, y = height * 0.9 - h, w = 10;
+		AddButton(ly_info, bd_boss, x, y, w, h);
+		bd_boss.AddAssetAnimation("blood.png", 0, 0);
+	}	
 
 	MainCamera::Instance()->SetPostion(0, 0, false);
 	//MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
@@ -170,7 +256,7 @@ void main() {
 //		layer->SetPostion(0, 0, false);
 //		layer->SetSize(width, height);
 //
-//		Actor enemy(SampleFunc);
+//		Actor enemy(NoCollFunc);
 //		AddActor(*layer, enemy, 100, 100, 50, 40);
 //		Follow fl;
 //		MoveLeft ml(4.f);
@@ -189,7 +275,7 @@ void main() {
 //		enemy.goaltype_.set(ns_module::mod_type::role);
 //		enemy.type_ = ns_module::mod_type::enemy;
 //
-//		Actor enemy1(SampleFunc);
+//		Actor enemy1(NoCollFunc);
 //		AddActor(*layer, enemy1, 400, 5, 80, 64);
 //		/*Follow flx;
 //		Clockwise cw(200);
@@ -244,10 +330,10 @@ void main() {
 //	MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());
 //	MainWorld::Instance()->SetGravity(b2Vec2(0, 0));
 //
-//	Actor actor(SampleFunc);
+//	Actor actor(NoCollFunc);
 //	AddActor(layer, actor, 5, 5, 50, 40);
 //
-//	Actor second(SampleFunc);
+//	Actor second(NoCollFunc);
 //	AddActor(layer, second, 55, 55, 50, 40);
 //
 //	Actor limit_bottom;

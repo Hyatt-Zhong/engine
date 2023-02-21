@@ -1,5 +1,6 @@
 #include "entity.h"
 #include "macro-def.h"
+#include <random>
 
 using namespace ns_engine;
 namespace ns_entity {
@@ -32,7 +33,7 @@ void Entity::Init() {
 	}
 	for (auto &it : ai_names_) {
 		if (!it.empty()) {
-			auto ai = kAiMap[it]();
+			auto ai = kAiMap.find(it) != kAiMap.end() ? kAiMap[it]() : kExAiMap[it]->Copy();
 			ai->SetMaster(this);
 			PushAi(ai);
 			ais_.push_back(ai);
@@ -54,6 +55,9 @@ const string kstrDamage = "damage";
 const string kstrDefense = "defense";
 const string kstrVelocity = "velocity";
 const string kstrRealDamage = "realdamage";
+const string kstrDrop = "drop";
+const string kstrDropMod = "dropmod";
+const string kstrDropChance = "dropchance";
 void Entity::SetParam(const Json::Value &jsn) {
 	Module::SetParam(jsn);
 	auto xmaxlife = JSON_VAL(jsn, kstrMaxLife, Double, MINUS1);
@@ -79,10 +83,17 @@ void Entity::SetParam(const Json::Value &jsn) {
 		real_damage_ = xreal_damage;
 	}
 
+	if (jsn.isMember(kstrDrop)) {
+		auto drop = jsn[kstrDrop];
+		drop_ = drop[kstrDropMod].asString();
+		drop_chance_ = JSON_VAL(drop, kstrDropChance, Double, 10.);
+	}
 }
 void Entity::Update(const unsigned &dt) {
 	if (life_ <= 0) {
-		Death();
+		BeKill();
+		Drop();
+		DeathEffect();
 	}
 	if (use_weapon_) {
 		for (auto &wp : wps_) {
@@ -93,14 +104,18 @@ void Entity::Update(const unsigned &dt) {
 }
 
 void Entity::OnCollision(Actor *actor) {
+	if (!actor) {
+		return;
+	}
 	auto other = dynamic_cast<ModuleInstance *>(actor);
-	if (other->goaltype_.test(type_)) {
+	if ((other->goaltype_ & (type_)) != 0) {
 		auto real_damage = other->damage_ - defense_;
 		life_ -= real_damage > 0 ? real_damage : 0;
 		life_ -= other->real_damage_;
+		life_ = life_ >= maxlife_ ? maxlife_ : life_;
 
 		//我们会设置子弹的敌人为某物，但是不会设置某物的敌人为子弹，所以要做以下操作
-		if (other->type_ == bullet) {
+		if (other->type_ .test( bullet)) {
 			other->life_ -= damage_;
 		}
 	}
@@ -112,4 +127,15 @@ void Entity::GetSubGeneratePos(int &x, int &y) {
 	x = pos.x + xx;
 	y = pos.y + yy;
 }
+void Entity::Drop() {
+	if (drop_.empty()) {
+		return;
+	}
+	uniform_int_distribution<unsigned> u(0, 100);
+	if (u(re()) <= drop_chance_) {
+		auto [xx, yy] = GetCenter();
+		ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>(drop_, parent_, xx, yy, direct_);
+	}
+}
+void Entity::DeathEffect() {}
 };

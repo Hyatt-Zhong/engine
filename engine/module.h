@@ -5,13 +5,12 @@
 #include "json/json.h"
 #include "combination.h"
 #include "utily.h"
+#include "menu.h"
+#include "map.h"
 
 namespace ns_weapon {
 class Weapon;
 };
-namespace ns_map {
-class Map;
-}
 
 namespace ns_module {
 	using namespace std;
@@ -21,6 +20,7 @@ namespace ns_module {
 	using namespace ns_combination;
 	using namespace ns_utily;
 	using namespace ns_map;
+	using namespace ns_menu;
 
 
 enum generate_type {
@@ -64,6 +64,7 @@ private:
 };
 
 extern map<string, Module::CreateAi> kAiMap;
+extern map<string, Ai*> kExAiMap;
 extern map<string, Module::CreateMultAi> kMAiMap;
 extern map<string, Module::CreateWeapon> kWeaponMap;
 
@@ -74,6 +75,7 @@ extern const string kstrAi;
 class ModuleFactory : public single<ModuleFactory> {
 public:
 	void LoadModules(const string &modpath);
+	void LoadAi(const string &strJsn);
 	template<typename T> 
 	void LoadModule(const string &strJsn) {
 		Json::Value jsn;
@@ -118,6 +120,14 @@ public:
 		com->Init();
 		AddToLayer(com, layer, x, y);
 		return com;
+	}
+
+	template<typename T> void SafeAddToLayer(const string &modname, Layer *layer, const int &x, const int &y, d_vel direct) {
+		layer->AddFrameEventOnce([=](void *) {
+			auto mod = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y, "");
+			mod->direct_ = direct;
+			layer->GetMap()->AddToManage(mod);
+		});
 	}
 
 	template<typename T>
@@ -169,6 +179,15 @@ public:
 				fn(combi, actor);
 			}
 			layer->GetMap()->AddToManage(actor);
+			if (actor->type_.test(boss)) {
+				actor->AddFrameEvent([](void *self) {
+					auto data = new ns_menu::Blood::BloodData;
+					auto rolex = (ModuleInstance *)self;
+					data->val = rolex->life_;
+					data->max = rolex->maxlife_;
+					Game::Instance()->OnNotice("info", "bd_boss", data);
+				});
+			}
 		});
 	}
 	void DestroyModule(Layer *layer, Actor *mod);

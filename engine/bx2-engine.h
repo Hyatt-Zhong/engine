@@ -82,11 +82,11 @@ class bx2Collision : public b2ContactListener {
 		}
 		void PreSolve(b2Contact* contact,
 			const b2Manifold* oldManifold) { 
-			print("PreSolve");
+			//print("PreSolve");
 		}
 		void PostSolve(b2Contact* contact,
 			const b2ContactImpulse* impulse) { 
-			print("PostSolve");
+			//print("PostSolve");
 		}
 
 	protected:

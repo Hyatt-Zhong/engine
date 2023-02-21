@@ -52,6 +52,7 @@ public:
 	//virtual void *Data() { return nullptr; }
 	//virtual string Name() = 0;
 	virtual bool IsEnd() { return false; }
+	virtual Ai *Copy() { return nullptr; }
 
 protected:
 	Actor *master_ = nullptr;

@@ -18,7 +18,13 @@ public:
 	void UpdateCoefficient();
 	void GetSubGeneratePos(int &x, int &y);
 	void UseWeapon(bool use) { /*use_weapon_ = use;*/ }
+	void Drop();
+	void DeathEffect();
 
+	//
+	string drop_;
+	float drop_chance_ = 10;
+	//
 	float life_ = 100.f;
 	float maxlife_ = 100.f;
 	float damage_ = 20.f;
