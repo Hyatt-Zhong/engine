@@ -33,6 +33,10 @@ void Game::OnNotice(const string& layer, const string& actor, void* data) {
 	pActor->OnNotice(data);
 }
 
+Layer *Game::GetLayer(const string &layer) {
+	return cur_scene_->FindSub(layer);
+}
+
 bool Game::GetDieFlag(int &x, int &y) {
 	if (use_role_) {
 		if (leadrol_) {
@@ -56,14 +60,14 @@ void Scene::ShowLayer(const string &name, bool show, bool monopoly) {
 	auto layer = FindSub(name);
 	layer->SetAlive(show);
 	if (!show) {
-		layer->Reset();
+		//layer->Reset();
 	}
 	if (monopoly) {
 		for (auto &it : sub_) {
 			if (it != layer) {
 				it->SetAlive(!show);
 				if (!show) {
-					it->Reset();
+					//it->Reset();
 				}
 			}
 		}
@@ -84,6 +88,14 @@ void Layer::RemoveDeath() {
 	}
 }
 
+void Layer::ForceClear() {
+	for (auto &it : sub_) {
+		it->Death();
+	}
+	RemoveDeath();
+}
+
+
 
 void Layer::Update(const unsigned &dt) {
 	if (map_) {
@@ -96,6 +108,11 @@ void Layer::Update(const unsigned &dt) {
 
 	RemoveDeath();
 }
+
+//void Layer::Reset() {
+//	
+//}
+
 
 void Actor::Update(const unsigned &dt) {
 	auto &[x, y] = vel_;

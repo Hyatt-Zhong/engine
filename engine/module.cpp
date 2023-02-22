@@ -186,8 +186,9 @@ void ModuleFactory::LoadSkill(const string &strJsn) {
 	auto shot = jsn["shot"].asString();
 	auto cd = jsn["cd"].asInt();
 	auto key = jsn["key"].asString();
+	auto ico = jsn["ico"].asString();
 
-	auto skill = new Skill(shot, cd, (SDL_KeyCode)key[0]);
+	auto skill = new Skill(name,shot, cd, (SDL_KeyCode)key[0],ico);
 	
 	kSkillMap[name] = skill;
 }
@@ -245,8 +246,9 @@ void ModuleFactory::AddToLayer(Module* mod, Layer *layer, const int &x, const in
 }
 
 void ModuleFactory::DestroyModule(Layer *layer, Actor *mod) {
-	delete mod;
 	layer->DeleteFromQuickMap(mod);
+	delete mod;
+	mod = nullptr;
 }
 
 void Module::Init() {

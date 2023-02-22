@@ -407,6 +407,10 @@ static float active_distance_ = 0.55; //1个多一点视野内
 				it->Update(dt);
 			}*/
 			Update(dt);
+			for (auto &it : over_draw_) {
+				it();
+			}
+			over_draw_.clear();
 		}
 
 		//void AddWorld(ns_box2d::bx2World *w) { worlds_.push_back(w); }
@@ -426,6 +430,7 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		void ShowLayer(const string &name, bool show, bool monopoly = true);
 
 		void OnNotice(const string &layer, const string &actor, void *data);
+		Layer *GetLayer(const string &layer);
 
 		void SetPath(const string &path) {
 			music_path_ = path + "\\asset\\music\\";
@@ -445,6 +450,8 @@ static float active_distance_ = 0.55; //1个多一点视野内
 
 		string GetPic(const string &path) { return pic_path_ + path; }
 
+		using OverDrawFn = function<void()>;
+		void OverDraw(OverDrawFn od) { over_draw_.push_back(od); }
 	public:
 		static void ListenMouse();
 		static void ListenKey();
@@ -452,6 +459,7 @@ static float active_distance_ = 0.55; //1个多一点视野内
 	protected:
 		Scene *cur_scene_;
 		bool use_role_ = true;
+		vector<OverDrawFn> over_draw_;
 
 	private:
 		vector<ns_box2d::bx2World *> worlds_;
@@ -490,7 +498,10 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		void Update(const unsigned &dt);
 		void SetMap(ns_map::Map *map);
 		void RemoveDeath();
+		void ForceClear();
 		ns_map::Map* GetMap() { return map_; }
+
+		/*void Reset();*/
 
 	public:
 		void AddToQuickMap(const string &name, Actor *actor) { quick_map[name] = actor; }

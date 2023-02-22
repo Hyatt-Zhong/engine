@@ -4,6 +4,10 @@
 #include "bx2-engine.h"
 #include "ai-base.h"
 
+namespace ns_skill {
+class Skill;
+};
+
 namespace ns_menu {
 using namespace std;
 using namespace ns_engine;
@@ -17,9 +21,9 @@ public:
 		//不需要自动清理，比如菜单层
 		auto_clear_sub_ = false;
 	}
-	void OnMouseMove(const int &x, const int &y);
+	virtual void OnMouseMove(const int &x, const int &y);
 
-	void OnHover(const int &x, const int &y, const int &w, const int &h);
+	virtual void OnHover(const int &x, const int &y, const int &w, const int &h);
 
 protected:
 private:
@@ -37,33 +41,18 @@ public:
 protected:
 private:
 };
-
+using BtnEvent = function<void()>;
 class EventButton:public Button {
 public:
-	void OnClick() {}
+	EventButton(BtnEvent bne) { bne_ = bne; }
+	void OnClick() { bne_(); }
 
 protected:
-private:
-};
-class Link:public Button
-{
-public:
-	enum LinkType {
-		kScene,
-		kLayer
-	};
-	Link(const string &goal, LinkType type) : goal_(goal), type_(type) {}
-	Link(const string &goal, bool show) : goal_(goal), type_(kLayer), show_(show) {}
-	void LinkScene(const string &scene);
-	void LinkLayer(const string &layer);
-	void OnClick();
+	BtnEvent bne_;
 
-protected:
 private:
-	string goal_;
-	LinkType type_;
-	bool show_;
 };
+
 class Info;
 using notice_func = function<void(void *, Info*)>;
 class Info : public Actor {
@@ -96,12 +85,36 @@ private:
 	bool center = false;
 };
 
+
 class SkillInfo : public Actor {
 public:
 	SkillInfo() { SetAlive(false); }
 	void OnNotice(void *data);
 
+
 protected:
+private:
+};
+
+class SkillMenu : public Menu {
+public:
+	friend class ns_skill::Skill;
+	SkillMenu(const string &name);
+
+	void OnMouseMove(const int &x, const int &y) {}
+
+	void OnHover(const int &x, const int &y, const int &w, const int &h) {}
+
+private:
+	void PushSkill(const string &skill, const string &ico);
+
+	void RemoveSkill(const string &skill);
+
+protected:
+	int size = 20;
+	int dt = 5;
+	map<string, SkillInfo *> skills_;
+
 private:
 };
 };

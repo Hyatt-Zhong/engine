@@ -132,9 +132,13 @@ public:
 	template<typename T>
 	void SafeAddToLayer(const string &modname, Layer *layer, typeset goaltype, const int &x, const int &y, const int count=1) {
 		layer->AddFrameEventOnce([=](void *) {
+			//print("drop");
 			for (auto i = 0; i < count; i++) {
 				auto bullet = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y, "");
-				bullet->goaltype_ = goaltype;
+				//print(bullet->type_);
+				if (bullet->goaltype_ == 0) {
+					bullet->goaltype_ = goaltype;
+				}
 				layer->GetMap()->AddToManage(bullet);
 			}
 		});
@@ -158,6 +162,7 @@ public:
 	void SafeAddCombinationToLayer(const string &modname, Layer *layer, const int &x, const int &y, Map *map = nullptr,
 				       AfterCreateCombo fn = nullptr, Actor *master = nullptr) {
 		layer->AddFrameEventOnce([=](void *) {
+			//print("add combo");
 			auto combi = ModuleFactory::Instance()->CopyCombi<T>(modname, (Layer *)layer, x, y);
 
 			if (master && !master->IsDeath()) {
@@ -178,6 +183,8 @@ public:
 		//auto goaltype = combi->goaltype_;
 		//auto direct = combi->direct_;
 		layer->AddFrameEventOnce([=](void *) {
+			//print("combo add");
+
 			auto actor = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y);
 			if (combi->goaltype_ != 0) {
 				actor->goaltype_ = combi->goaltype_;
@@ -191,11 +198,11 @@ public:
 			layer->GetMap()->AddToManage(actor);
 			if (actor->type_.test(boss)) {
 				actor->AddFrameEvent([](void *self) {
-					auto data = new ns_menu::Blood::BloodData;
+					ns_menu::Blood::BloodData data;
 					auto rolex = (ModuleInstance *)self;
-					data->val = rolex->life_;
-					data->max = rolex->maxlife_;
-					Game::Instance()->OnNotice("info", "bd_boss", data);
+					data.val = rolex->life_;
+					data.max = rolex->maxlife_;
+					Game::Instance()->OnNotice("info", "bd_boss", &data);
 				});
 			}
 		});

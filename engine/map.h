@@ -27,6 +27,7 @@ public:
 
 	void AddToManage(Actor *actor);
 	void Clear();
+	virtual Map *Copy() = 0;
 
 protected:
 	Layer *layer = nullptr;
@@ -53,6 +54,8 @@ public:
 	string GetName();
 
 	void CreateOrUpdateActor();
+	bool IsEnd();
+	Map *Copy() { return new CommonMap(*this); }
 
 public:
 	void AddCombo(Combination *combo) { cur_combos_.push_back(combo); }
@@ -81,7 +84,15 @@ public:
 			SAFE_DELETE(it.second);
 		}
 	}
-	Map *GetMap(const string &name) { MAP_FIND(maps, name, nullptr); }
+	Map *CopyMap(const string &name) { 
+		auto it = maps.find(name);
+		if (it != maps.end()) {
+			return it->second->Copy();
+		}
+		return nullptr;
+	}
+	void ReleaseMap(Map *map) { SAFE_DELETE(map);
+	}
 	void LoadMaps(const string &path);
 
 protected:
@@ -108,6 +119,7 @@ public:
 	TestMap();
 	void AddTestMod(const string &name, const string &memname, int x = 0, int y = 0);
 	void CreateOrUpdateActor();
+	Map *Copy() { return new TestMap(*this); }
 
 protected:
 private:

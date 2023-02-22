@@ -148,8 +148,14 @@ void CommonMap::CreateOrUpdateActor() {
 		while (!qu.empty()) {
 			auto e = qu.front();
 			qu.pop();
-			ModuleFactory::Instance()->SafeAddCombinationToLayer<CombinationInstance>(
-				e.comname, layer, Game::Instance()->w_ * e.x, Game::Instance()->h_ * e.y, this, fn);
+			if (!cur_need_clear) //如果不需要清理，则不用加入到cur_combos_里判断
+			{
+				ModuleFactory::Instance()->SafeAddCombinationToLayer<CombinationInstance>(
+					e.comname, layer, Game::Instance()->w_ * e.x, Game::Instance()->h_ * e.y, this);
+			} else {
+				ModuleFactory::Instance()->SafeAddCombinationToLayer<CombinationInstance>(
+					e.comname, layer, Game::Instance()->w_ * e.x, Game::Instance()->h_ * e.y, this, fn);
+			}
 		}
 	}
 	if (cur_need_clear) {//需要清理，则等待这波角色的死亡
@@ -164,6 +170,13 @@ void CommonMap::CreateOrUpdateActor() {
 		cur_combos_.clear();
 	}
 	Clear();
+}
+
+bool CommonMap::IsEnd() {
+	if (cur_combos_.empty() && que_.empty()) {
+		return true;
+	}
+	return false;
 }
 
 void MapManager::LoadMaps(const string &path) {

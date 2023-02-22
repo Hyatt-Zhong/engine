@@ -20,7 +20,8 @@ Entity::~Entity() {
 	}
 	mais_.clear();
 	for (auto &it : skills_) {
-		SAFE_DELETE(it);
+		it.second->UnEquip();
+		SAFE_DELETE(it.second);
 	}
 	skills_.clear();
 }
@@ -108,7 +109,7 @@ void Entity::Update(const unsigned &dt) {
 		}
 	}
 	for (auto &it : skills_) {
-		it->Update(dt);
+		it.second->Update(dt);
 	}
 	Actor::Update(dt);
 	if (IsBeKill()) {
@@ -135,9 +136,11 @@ void Entity::OnCollision(Actor *actor) {
 
 		if (!other->give_skill_.empty()) {
 			auto skill = other->give_skill_;
-			auto sk = kSkillMap[skill]->Copy();
-			PushSkill(sk);
-			sk->Equip();
+			if (!FindSkill(skill)) {
+				auto sk = kSkillMap[skill]->Copy();
+				PushSkill(skill, sk);
+				sk->Equip();
+			}
 		}
 	}
 }
@@ -159,18 +162,17 @@ void Entity::Drop() {
 	}
 }
 void Entity::DeathEffect() {}
-bool Entity::FindSkill(Skill *skill) {
-	for (auto &it : skills_) {
-		if (it == skill) {
-			return true;
-		}
-	}
-	return false;
+bool Entity::FindSkill(const string &name) {
+	return skills_.find(name) != skills_.end();
 }
 
-void Entity::PushSkill(Skill *skill) {
-	skills_.push_back(skill);
+bool Entity::PushSkill(const string &name, Skill *skill) {
+	if (FindSkill(name)) {
+		return false;
+	}
+	skills_[name] = (skill);
 	skill->SetMaster(this);
+	return true;
 }
 
 };

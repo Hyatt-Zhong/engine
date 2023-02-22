@@ -31,24 +31,7 @@ void Button::OnMouseMove(const int &x, const int &y) {
 void Button::OnHover(const int &x, const int &y, const int &w, const int &h) {
 	Game::Instance()->DrawRect(x, y, w, h, 0x0000ffff);
 }
-void Link::LinkScene(const string &scene) {
-	Game::Instance()->SwitchScene(scene);
-}
-void Link::LinkLayer(const string &layer) {
-	Game::Instance()->ShowLayer(layer, show_);
-}
-void Link::OnClick() {
-	switch (type_) {
-	case ns_menu::Link::kScene:
-		LinkScene(goal_);
-		break;
-	case ns_menu::Link::kLayer:
-		LinkLayer(goal_);
-		break;
-	default:
-		break;
-	}
-}
+
 void Blood::Change(const BloodData &bd) {
 	auto val = bd.val * base_width_;
 	auto max = bd.max * base_width_;
@@ -72,6 +55,42 @@ void Blood::OnNotice(void *data) {
 	SetAlive(true);
 	auto pval = (BloodData *)data;
 	Change(*pval);
-	delete pval;
 }
+void SkillInfo::OnNotice(void *data) {
+	auto dt = *(float *)data;
+	auto w = w_ - dt * w_;
+	int x = x_ + w_ - w;
+	w += 3;
+	auto y = y_;
+	camera_->Trans(x, y, h_);
+	Game::Instance()->OverDraw([=]() { Game::Instance()->FillRect(x, y, w, h_, 0x00); });
+}
+SkillMenu::SkillMenu(const string &name) : Menu(name) {
+	auto h = size;
+	x_ = 0;
+	y_ = Game::Instance()->h_ * 0.95 - h;
+	w_ = Game::Instance()->w_;
+	h_ = h;
+}
+void SkillMenu::PushSkill(const string &skill, const string &ico) {
+	auto skillico = new SkillInfo;
+	skillico->SetAlive(true);
+	skillico->SetName(skill);
+	AddSub(skillico);
+	auto n = sub_.size();
+	skillico->SetPostion(x_ + n * (size + dt), y_);
+	skillico->SetSize(size, size);
+	skillico->AddAssetAnimation(ico, 0, 0);
+
+	skills_[skill] = skillico;
+}
+void SkillMenu::RemoveSkill(const string &skill) {
+	auto it = skills_.find(skill);
+	if (it == skills_.end()) {
+		return;
+	}
+	DeleteSub(it->second);
+	delete it->second;
+}
+
 };

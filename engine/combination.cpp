@@ -59,6 +59,7 @@ bool Generator::Drive(Actor *actor) {
 	if (it == members_.end()) {
 		shared_ptr<Ai> ai(kAiMap[ai_name_]());
 		ai->SetMaster(actor);
+		//print(dynamic_cast<ModuleInstance*>(actor)->give_skill_);
 		AddMember(actor, ai);
 		ai->Drive(actor);
 		return ai->IsEnd();

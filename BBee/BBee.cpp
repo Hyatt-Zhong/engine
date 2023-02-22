@@ -56,6 +56,66 @@ void main() {
 	wx->Create(width, height);
 	wx->SetDieFlag(false);
 
+	ModuleFactory::Instance()->LoadModules(wx->GetModulePath());
+	MapManager::Instance()->LoadMaps(wx->GetMapPath());
+
+	auto mapset = [](Map *map) {
+		map->SetRoleCreateEvent([](void *role) {
+			auto actor = (Actor *)role;
+			actor->AddKeyEvent(SDLK_t, [=](const SDL_Keycode &key, const Uint32 &up_or_down, void *data) {
+				if (up_or_down == SDL_KEYUP) {
+					auto master = actor;
+					int x, y;
+					dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
+					ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master,
+												  x, y, "");
+				}
+			});
+			actor->AddFrameEvent([](void *self) {
+				auto data = new ns_menu::Blood::BloodData;
+				auto rolex = (ModuleInstance *)self;
+				data->val = rolex->life_;
+				data->max = rolex->maxlife_;
+				Game::Instance()->OnNotice("info", "bd_role", data);
+			});
+
+			actor->AddFrameEvent([](void *self) {
+				Actor *actor = (Actor *)self;
+				auto x = 0, y = 0;
+				if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_D)) {
+					x = 1;
+				}
+				if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_A)) {
+					x = -1;
+				}
+				if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_W)) {
+					y = 1;
+				}
+				if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
+					y = -1;
+				}
+				d_vel xv(x, y);
+				xv.Normalize();
+				xv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
+				actor->SetVel(xv);
+
+				if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(1)) {
+					auto n = 20;
+					static int count = 0;
+					if (count % n == n - 1) {
+						auto master = actor;
+						int x, y;
+						dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
+						ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_,
+													  master, x, y, "");
+						count = 0;
+					}
+					count++;
+				}
+			});
+		});
+	};
+
 	Scene sc_start("start");
 	Menu mn_start("start");
 
@@ -66,8 +126,14 @@ void main() {
 	mn_start.SetPostion(0, 0, false);
 	mn_start.SetSize(width, height);
 
-	Link ac_start("play", Link::LinkType::kScene);
-	EventButton ac_end;
+	EventButton ac_start([mapset]() {
+		Game::Instance()->SwitchScene("play");
+		auto lv1 = MapManager::Instance()->CopyMap("lv1");
+		mapset(lv1);
+		auto ly_play = Game::Instance()->GetLayer("play");
+		ly_play->SetMap(lv1);
+	});
+	EventButton ac_end([]() {});
 	AddButton(mn_start, ac_start, 200, 200, 100, 50);
 	AddButton(mn_start, ac_end, 200, 100, 100, 50);
 	ac_start.AddAssetAnimation("start.png", 0, 0);
@@ -85,82 +151,18 @@ void main() {
 	sc_start.SetAlive(true);
 	ly_play.SetWorld(MainWorld::Instance());
 
-		Actor limit_bottom;
+	Actor limit_bottom;
 	AddActorWithoutTexture(ly_play, limit_bottom, 0, 0, width, 1);
 	
-		Actor limit_top;
+	Actor limit_top;
 	AddActorWithoutTexture(ly_play, limit_top, 0, height, width, 1);
 	
-		Actor limit_left;
+	Actor limit_left;
 	AddActorWithoutTexture(ly_play, limit_left, 0, 0, 1, height);
 	
-		Actor limit_right;
+	Actor limit_right;
 	AddActorWithoutTexture(ly_play, limit_right, width - 1, 0, 1, height);
-	//sc_play.SetAlive(true);
-	ModuleFactory::Instance()->LoadModules(wx->GetModulePath());
-	//TestMap tmap;
-	//tmap.AddTestMod("assistant", "assistant"); //必须加后面的名字
-	//tmap.AddTestMod("assistant", "assistant1", width / 2, height / 2); //必须加后面的名字
-	//tmap.AddTestMod("assistant", "assistant2", width / 2, height);     //必须加后面的名字
-	//tmap.AddTestMod("assistant", "assistant4", width / 2, height/3);     //必须加后面的名字
-	//ly_play.SetMap(&tmap);
-	MapManager::Instance()->LoadMaps(wx->GetMapPath());
-	auto lv1 = MapManager::Instance()->GetMap("lv1");
-	lv1->SetRoleCreateEvent([](void *role) {
-		auto actor = (Actor *)role;
-		actor->AddKeyEvent(SDLK_t, [=](const SDL_Keycode &key, const Uint32 &up_or_down, void *data) {
-			if (up_or_down == SDL_KEYUP) {
-				auto master = actor;
-				int x, y;
-				dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
-				ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master, x, y,
-											  "");
-			}
-		});
-		actor->AddFrameEvent([](void *self) {
-			auto data = new ns_menu::Blood::BloodData;
-			auto rolex = (ModuleInstance *)self;
-			data->val = rolex->life_;
-			data->max = rolex->maxlife_;
-			Game::Instance()->OnNotice("info", "bd_role", data);
-		});
-
-		actor->AddFrameEvent([](void *self) {
-			Actor *actor = (Actor *)self;
-			auto x = 0, y = 0;
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_D)) {
-				x = 1;
-			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_A)) {
-				x = -1;
-			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_W)) {
-				y = 1;
-			}
-			if (ns_sdl_winx::EventHandle::Instance()->GetKeyState(SDL_SCANCODE_S)) {
-				y = -1;
-			}
-			d_vel xv(x, y);
-			xv.Normalize();
-			xv *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
-			actor->SetVel(xv);
-
-			if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(1)) {
-				auto n = 20;
-				static int count = 0;
-				if (count % n == n - 1) {
-					auto master = actor;
-					int x, y;
-					dynamic_cast<ModuleInstance *>(master)->GetSubGeneratePos(x, y);
-					ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>("FollowBullet", master->parent_, master,
-												  x, y, "");
-					count = 0;
-				}
-				count++;
-			}
-		});
-	});
-	ly_play.SetMap(lv1);
+	
 	//ly_play.CameraFollow(0, "leadrole");
 
 	Menu mn_pause("pause");
@@ -168,8 +170,15 @@ void main() {
 	mn_pause.SetPostion(0, 0, false);
 	mn_pause.SetSize(width, height);
 
-	Link ac_continue("pause", false);
-	Link ac_gomain("start", Link::LinkType::kScene);
+	EventButton ac_continue([]() { Game::Instance()->ShowLayer("pause", false); });
+	EventButton ac_gomain([]() {
+		auto ly_play = Game::Instance()->GetLayer("play");
+		auto map = ly_play->GetMap();
+		ly_play->ForceClear();
+		map->Clear();
+		SAFE_DELETE(map);
+		Game::Instance()->SwitchScene("start");
+	});
 	AddButton(mn_pause, ac_continue, 200, 200, 100, 50);
 	AddButton(mn_pause, ac_gomain, 200, 100, 100, 50);
 	ac_continue.AddAssetAnimation("continue.png", 0, 0);
@@ -191,10 +200,13 @@ void main() {
 	Blood bd_boss("bd_boss");
 	{
 		bd_boss.Center();
-		int x = 0, h = 10, y = height * 0.9 - h, w = 10;
+		int x = 0, h = 10, y = height * 0.9 - h, w = 0;
 		AddButton(ly_info, bd_boss, x, y, w, h);
 		bd_boss.AddAssetAnimation("blood.png", 0, 0);
 	}	
+
+	SkillMenu smn("mn_skill");
+	sc_play.AddSub(&smn);
 
 	MainCamera::Instance()->SetPostion(0, 0, false);
 	//MainWorld::Instance()->SetDbgDraw(MainCamera::Instance());

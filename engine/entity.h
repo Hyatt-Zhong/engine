@@ -24,8 +24,8 @@ public:
 	void UseWeapon(bool use) { /*use_weapon_ = use;*/ }
 	void Drop();
 	void DeathEffect();
-	bool FindSkill(Skill *skill);
-	void PushSkill(Skill *skill);
+	bool FindSkill(const string &name);
+	bool PushSkill(const string &name, Skill *skill);
 	//
 	string drop_;
 	float drop_chance_ = 10;
@@ -48,7 +48,7 @@ private:
 	vector<Weapon *> wps_;
 	vector<Ai *> ais_;
 	vector<MultAi *> mais_;
-	vector<Skill *> skills_;
+	map<string, Skill *> skills_;
 };
 using ModuleInstance = Entity;
 
