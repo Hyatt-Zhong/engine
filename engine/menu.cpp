@@ -60,10 +60,9 @@ void SkillInfo::OnNotice(void *data) {
 	auto dt = *(float *)data;
 	auto w = w_ - dt * w_;
 	int x = x_ + w_ - w;
-	w += 3;
 	auto y = y_;
 	camera_->Trans(x, y, h_);
-	Game::Instance()->OverDraw([=]() { Game::Instance()->FillRect(x, y, w, h_, 0x00); });
+	Game::Instance()->OverDraw([=]() { Game::Instance()->AlphaOver(x, y, w, h_); });
 }
 SkillMenu::SkillMenu(const string &name) : Menu(name) {
 	auto h = size;

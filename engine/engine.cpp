@@ -2,6 +2,7 @@
 #include "map.h"
 
 using namespace ns_map;
+using namespace ns_sdl_ast;
 namespace ns_engine {
 
 void Game:: SwitchScene(const string &name) {
@@ -36,6 +37,13 @@ void Game::OnNotice(const string& layer, const string& actor, void* data) {
 Layer *Game::GetLayer(const string &layer) {
 	return cur_scene_->FindSub(layer);
 }
+
+void Game::AlphaOver(const int &x, const int &y, const int &w, const int &h) {
+	auto path = GetPic("alpha.png");
+	auto texture = AssetMgr::Instance()->GetTexture(path);
+	FillRect(x, y, w, h, texture);
+}
+
 
 bool Game::GetDieFlag(int &x, int &y) {
 	if (use_role_) {

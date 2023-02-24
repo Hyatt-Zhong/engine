@@ -12,6 +12,7 @@ file(GLOB SRC_FILE *.*)
 add_library(xEngine ${SRC_FILE})
 target_link_libraries(xEngine SDL2.lib)
 target_link_libraries(xEngine SDL2_image.lib)
+target_link_libraries(xEngine SDL2_mixer.lib)
 
 #set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Box2D)
 #file(GLOB_RECURSE SRC_DIR_LIST ${SRC_DIR}/*.cpp ${SRC_DIR}/*h)	#±È¿˙ªÒ»°

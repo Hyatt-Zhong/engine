@@ -7,6 +7,7 @@
 #include "utily.h"
 #include "menu.h"
 #include "map.h"
+#include "effect.h"
 
 namespace ns_weapon {
 class Weapon;
@@ -25,6 +26,7 @@ namespace ns_module {
 	using namespace ns_map;
 	using namespace ns_menu;
 	using namespace ns_skill;
+	using namespace ns_effect;
 
 
 enum generate_type {
@@ -77,6 +79,7 @@ extern map<string, Skill *> kSkillMap;
 extern map<string, int> kModType;
 extern const string kstrGoalType;
 extern const string kstrAi;
+extern const string kstrAnimat;
 
 class ModuleFactory : public single<ModuleFactory> {
 public:
@@ -89,12 +92,24 @@ public:
 		if (!ParseJson(strJsn, jsn)) {
 			return;
 		}
-		auto name = jsn["modname"].asString();
+		auto ismult = JSON_VAL(jsn, kstrMult, Bool, false);
+		if (ismult) {
+			for (auto &it : jsn["mods"]) {
+				auto name = it["modname"].asString();
 
-		auto mod = new T;
-		mod->SetParam(jsn);
+				auto mod = new T;
+				mod->SetParam(it);
 
-		mods[name] = mod;
+				mods[name] = mod;
+			}
+		} else {
+			auto name = jsn["modname"].asString();
+
+			auto mod = new T;
+			mod->SetParam(jsn);
+
+			mods[name] = mod;
+		}
 	}
 
 	template<typename T> 
@@ -111,6 +126,20 @@ public:
 		combis[name] = com;
 	}
 
+	template<typename T> 
+	void LoadEffect(const string &strJsn) {
+		Json::Value jsn;
+		if (!ParseJson(strJsn, jsn)) {
+			return;
+		}
+		auto name = jsn["modname"].asString();
+
+		auto eff = new T;
+		eff->SetParam(jsn);
+
+		effects[name] = eff;
+	}
+
 	void UnLoadModules();
 
 	template<typename T> 
@@ -118,6 +147,7 @@ public:
 		auto mod = new T(*(T *)mods[modname]);
 		mod->Init();
 		AddToLayer(mod, layer, x, y, name);
+		mod->PlayChunk(mod->audio_birth_);
 		return mod;
 	}
 
@@ -129,18 +159,37 @@ public:
 		return com;
 	}
 
+	template<typename T> 
+	Actor *CopyEffect(const string &modname, Layer *layer, const int &x, const int &y
+		,const int&w,const int& h) {
+		auto eff = new T(*(T *)effects[modname]);
+		eff->Init();
+		AddToLayer(eff, layer, x, y, w, h);
+		return eff;
+	}
+
 	template<typename T>
 	void SafeAddToLayer(const string &modname, Layer *layer, typeset goaltype, const int &x, const int &y, const int count=1) {
 		layer->AddFrameEventOnce([=](void *) {
-			//print("drop");
 			for (auto i = 0; i < count; i++) {
 				auto bullet = ModuleFactory::Instance()->Copy<T>(modname, (Layer *)layer, x, y, "");
-				//print(bullet->type_);
 				if (bullet->goaltype_ == 0) {
 					bullet->goaltype_ = goaltype;
 				}
 				layer->GetMap()->AddToManage(bullet);
 			}
+		});
+	}
+
+	template<typename T>
+	void SafeAddToLayer(const string &modname, Layer *layer, Actor* master) {
+		auto x = master->x_;
+		auto y = master->y_;
+		auto w = master->w_;
+		auto h = master->h_;
+		layer->AddFrameEventOnce([=](void *) {
+			auto eff = ModuleFactory::Instance()->CopyEffect<T>(modname, layer, x, y, w, h);
+			layer->GetMap()->AddToManage(eff);
 		});
 	}
 
@@ -212,11 +261,13 @@ public:
 private:
 	void AddToLayer(Module *mod, Layer *layer, const int &x, const int &y, const string &name);
 	void AddToLayer(Combination *mod, Layer *layer, const int &x, const int &y);
+	void AddToLayer(Effect *mod, Layer *layer, const int &x, const int &y, const int &w, const int &h);
 
 protected:
 private:
 	map<string, Actor *> mods;
 	map<string, Actor *> combis;
+	map<string, Actor *> effects;
 };
 
 };

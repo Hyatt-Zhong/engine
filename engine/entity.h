@@ -31,6 +31,9 @@ public:
 	float drop_chance_ = 10;
 	int drop_count_ = 1;
 	string give_skill_;
+	string audio_birth_;
+	string audio_die_;
+	string die_effect_;
 	//
 	float life_ = 100.f;
 	float maxlife_ = 100.f;

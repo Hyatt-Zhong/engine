@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <SDL/include/SDL.h>
 #include <SDL/include/SDL_image.h>
+#include <SDL/include/SDL_mixer.h>
 #include <common.h>
 #include <mutex>
 
@@ -197,30 +198,20 @@ namespace ns_sdl_winx {
 			SDL_SetRenderDrawColor(render_, red, g, b, a);
 		}
 
-		void FillRect(const int &x, const int &y, const int &w, const int &h, const unsigned &color) {
-			SDL_Rect rt{x, y, w, h};
-
-			Uint8 red, g, b, a;
-			SDL_GetRenderDrawColor(render_, &red, &g, &b, &a);
-			Uint8 nr = color & 0xff;
-			Uint8 ng = color >> 8 & 0xff;
-			Uint8 nb = color >> 16 & 0xff;
-			Uint8 na = color >> 24 & 0xff;
-
-			SDL_SetRenderDrawColor(render_, nr, ng, nb, na);
-			SDL_RenderFillRect(render_, &rt);
-			SDL_SetRenderDrawColor(render_, red, g, b, a);
-		}
+		void FillRect(const int &x, const int &y, const int &w, const int &h, SDL_Texture *texture);
 
 		void Offset(int& x, int& y, const int& w, const int& h) {
 			x = x + ox_;
 			y = oy_ - y - h;
 		}
+		void ShutDown() { quit_ = true; }
 		void Destroy() {
 			SDL_DestroyRenderer(render_);
 			SDL_DestroyWindow(win_);
 			SDL_Quit();
 		}
+
+		void OpenAudio();
 	public:
 		renderer* render_;
 		mutex mtx_;
@@ -246,7 +237,7 @@ namespace ns_sdl_winx {
 	};
 	};
 
-namespace ns_sdl_img {
+namespace ns_sdl_ast {
 using namespace std;
 template<typename T>
 class Animation {
@@ -266,6 +257,7 @@ public:
 		if (tick_ >= get<1>(curr_)) {
 			tick_ = 0;
 			curr_ = next_;
+			IsEnd();
 			Next();
 		}
 		SDL_Rect rt = {x, y, w, h};
@@ -288,10 +280,11 @@ public:
 
 	void UpdateParent(T *parent) { parent_ = parent; }
 
+	bool IsRunEnd() { return is_run_end_; }
+
 protected:
-	void Next()
-	{
-		auto index = get<2>(curr_) + 1;
+	void Next() {
+		auto index = get<2>(curr_) + 1;		
 		if (index >= ts_.size()) {
 			next_ = first_;
 		}
@@ -299,6 +292,12 @@ protected:
 			get<0>(next_) = get<1>(ts_[index]);
 			get<1>(next_) = get<2>(ts_[index]);
 			get<2>(next_) = index;
+		}
+	}
+
+	void IsEnd() {
+		if (get<2>(curr_) >= ts_.size() - 1) {
+			is_run_end_ = true;
 		}
 	}
 
@@ -310,6 +309,7 @@ private:
 	node next_;
 	renderer *r_;
 	T *parent_;
+	bool is_run_end_=false;
 };
 
 class AssetMgr : public single<AssetMgr> {
@@ -326,10 +326,52 @@ public:
 		return LoadTexture(name);
 	}
 
-	void ReleaseTexture()
-	{
+	Mix_Music *GetMusic(const string &name, const string& fullname="") {
+		auto it = musics_.find(name);
+		if (it != musics_.end()) {
+			return it->second;
+		} else if (!fullname.empty()) {
+			return LoadMuisc(name, fullname);
+		}
+		return nullptr;
+	}
+
+	Mix_Chunk *GetChunk(const string &name, const string &fullname = "") {
+		auto it = chunks_.find(name);
+		if (it != chunks_.end()) {
+			return it->second;
+		} else if (!fullname.empty()) {
+			return LoadChunk(name, fullname);
+		}
+		return nullptr;
+	}
+
+	void PlayMusic(const string &name) {
+		auto mus = GetMusic(name);
+		if (mus) {
+			Mix_PlayMusic(mus, 0);
+		}
+	}
+
+	void PlayChunk(const string& name) {
+		auto chk = GetChunk(name);
+		if (chk) {
+			Mix_PlayChannel(-1, chk, 0);
+		}
+	}
+
+	bool IsPlayingMus() { return 0 != Mix_PlayingMusic();
+	}
+
+	void ReleaseAsset() {
 		for (auto &it : textures_) {
 			SDL_DestroyTexture(it.second);
+		}
+		for (auto &it : musics_) {
+			Mix_FreeMusic(it.second);
+		}
+		for (auto &it : chunks_) {
+			Mix_FreeChunk(it.second);
 		}
 	}
 
@@ -340,10 +382,23 @@ protected:
 		textures_.insert(make_pair(name, t));
 		return t;
 	}
+	Mix_Music *LoadMuisc(const string &name, const string &fullname) {
+		auto m = Mix_LoadMUS(fullname.c_str());
+		musics_.insert(make_pair(name, m));
+		return m;
+	}
+
+	Mix_Chunk *LoadChunk(const string &name, const string &fullname) {
+		auto ck = Mix_LoadWAV(fullname.c_str());
+		chunks_.insert(make_pair(name, ck));
+		return ck;
+	}
 
 private:
 	renderer *r_;
 	map<string, SDL_Texture *> textures_;
+	map<string, Mix_Music *> musics_;
+	map<string, Mix_Chunk *> chunks_;
 };
 };
 

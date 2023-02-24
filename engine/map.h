@@ -48,6 +48,10 @@ public:
 		string name;
 		int life;
 	};
+	struct ExData {
+		float x, y;
+		string name;
+	};
 
 public:
 	void Load(const string &strMap);
@@ -67,10 +71,13 @@ private:
 protected:
 	queue<pair<queue<ComData>,bool>> que_;
 	string map_name_;
+	string bgm_;
 	vector<Combination *> cur_combos_;
 	bool cur_need_clear = false;
 
 	RoleData rdata_;
+
+	vector<ExData> exdata_;
 
 private:
 };
@@ -94,6 +101,7 @@ public:
 	void ReleaseMap(Map *map) { SAFE_DELETE(map);
 	}
 	void LoadMaps(const string &path);
+	void UnLoadMaps();
 
 protected:
 private:

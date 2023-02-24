@@ -64,6 +64,8 @@ const string kstrDropMod = "dropmod";
 const string kstrDropChance = "dropchance";
 const string kstrDropCount = "dropcount";
 const string kstrGiveSkill = "giveskill";
+const string kstrAudio = "audio";
+
 void Entity::SetParam(const Json::Value &jsn) {
 	Module::SetParam(jsn);
 	auto xmaxlife = JSON_VAL(jsn, kstrMaxLife, Double, MINUS1);
@@ -97,6 +99,18 @@ void Entity::SetParam(const Json::Value &jsn) {
 	}
 
 	give_skill_ = JSON_VAL(jsn, kstrGiveSkill, String, "");
+
+	if (jsn.isMember(kstrAudio)) {
+		auto audio = jsn[kstrAudio];
+		auto birth = JSON_VAL(audio, "birth", String, "");
+		auto die = JSON_VAL(audio, "die", String, "");
+		LoadChunk(birth);
+		LoadChunk(die);
+		audio_birth_ = birth;
+		audio_die_ = die;
+	}
+
+	die_effect_ = JSON_VAL(jsn, "dieeffect", String, "");
 }
 void Entity::Update(const unsigned &dt) {
 	if (life_ <= 0) {
@@ -113,6 +127,7 @@ void Entity::Update(const unsigned &dt) {
 	}
 	Actor::Update(dt);
 	if (IsBeKill()) {
+		PlayChunk(audio_die_);
 		Drop();
 		DeathEffect();
 	}
@@ -161,7 +176,11 @@ void Entity::Drop() {
 		ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>(drop_, parent_, this->goaltype_, xx, yy, drop_count_);
 	}
 }
-void Entity::DeathEffect() {}
+void Entity::DeathEffect() {
+	if (!die_effect_.empty()) {
+		ModuleFactory::Instance()->SafeAddToLayer<EffectInstance>(die_effect_, parent_, this);
+	}
+}
 bool Entity::FindSkill(const string &name) {
 	return skills_.find(name) != skills_.end();
 }

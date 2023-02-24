@@ -110,7 +110,6 @@ public:
 		box2d_drive_(false)
 	{
 	}
-
 	void SetGravity(const b2Vec2 &gravity)	{
 		world_->SetGravity(gravity);
 		box2d_drive_ = true;

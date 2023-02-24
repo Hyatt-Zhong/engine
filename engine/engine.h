@@ -179,7 +179,6 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		}*/
 		virtual void Update(const unsigned& dt) {
 			FrameEvent();
-			FrameEventOnce();
 			ChangeState();
 
 			{
@@ -200,6 +199,7 @@ static float active_distance_ = 0.55; //1个多一点视野内
 					it->Update(dt);
 				}
 			}
+			FrameEventOnce();
 		}
 
 		virtual void ChangeState() {
@@ -247,7 +247,7 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		void AddAssetAnimation(const string& path_, const int& dt, const int& state)
 		{
 			auto path = Game::Instance()->GetPic(path_);
-			auto texture = ns_sdl_img::AssetMgr::Instance()->GetTexture(path);
+			auto texture = ns_sdl_ast::AssetMgr::Instance()->GetTexture(path);
 			auto it = anims_.find(state);
 			if (it != anims_.end()) {
 				tuple<string, SDL_Texture*, int> tp = { path,texture,dt };
@@ -255,10 +255,20 @@ static float active_distance_ = 0.55; //1个多一点视野内
 			}
 			else {
 				tuple<string, SDL_Texture*, int> tp = { path,texture,dt };
-				auto rr = ns_sdl_img::AssetMgr::Instance()->GetRenderer();
-				ns_sdl_img::Animation<ThisClass> ani(rr, tp, this);
+				auto rr = ns_sdl_ast::AssetMgr::Instance()->GetRenderer();
+				ns_sdl_ast::Animation<ThisClass> ani(rr, tp, this);
 				anims_.insert(make_pair(state, ani));
 			}
+		}
+
+		void LoadMusic(const string &name) { 
+			auto path = Game::Instance()->GetMus(name);
+			ns_sdl_ast::AssetMgr::Instance()->GetMusic(name, path);
+		}
+
+		void LoadChunk(const string &name) {
+			auto path = Game::Instance()->GetMus(name);
+			ns_sdl_ast::AssetMgr::Instance()->GetChunk(name, path);
 		}
 
 		void SetPostionByMouse(const int& x, const int& y, bool center = true) {
@@ -345,6 +355,9 @@ static float active_distance_ = 0.55; //1个多一点视野内
 			}
 		}
 
+		void PlayMusic(const string &name) { name.empty() ? void(0) : ns_sdl_ast::AssetMgr::Instance()->PlayMusic(name); }
+		void PlayChunk(const string &name) { name.empty() ? void(0) : ns_sdl_ast::AssetMgr::Instance()->PlayChunk(name); }
+
 		vector<S*> sub_;
 		int zorder_;
 
@@ -352,8 +365,8 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		int w_, h_;
 		string name_;
 
-		map<int, ns_sdl_img::Animation<ThisClass>> anims_;
-		ns_sdl_img::Animation<ThisClass> *curr_anim_;
+		map<int, ns_sdl_ast::Animation<ThisClass>> anims_;
+		ns_sdl_ast::Animation<ThisClass> *curr_anim_;
 		double angle_;
 
 		Camera *camera_ = nullptr;
@@ -396,7 +409,7 @@ static float active_distance_ = 0.55; //1个多一点视野内
 			camera_->SetWindow(this);
 			camera_->SetPostion(0, 0);
 			camera_->SetViewport(w, h);
-			ns_sdl_img::AssetMgr::Instance()->SetRenderer(render_);
+			ns_sdl_ast::AssetMgr::Instance()->SetRenderer(render_);
 
 			//world_ = ns_box2d::MainWorld::Instance();
 			//AddWorld(ns_box2d::MainWorld::Instance());
@@ -449,9 +462,13 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		}
 
 		string GetPic(const string &path) { return pic_path_ + path; }
+		string GetMus(const string &path) { return music_path_ + path; }
+		void AlphaOver(const int &x, const int &y, const int &w, const int &h);
 
 		using OverDrawFn = function<void()>;
 		void OverDraw(OverDrawFn od) { over_draw_.push_back(od); }
+
+		void ReleaseAsset() { ns_sdl_ast::AssetMgr::Instance()->ReleaseAsset(); }
 	public:
 		static void ListenMouse();
 		static void ListenKey();

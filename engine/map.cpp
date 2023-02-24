@@ -97,6 +97,8 @@ void CommonMap::Load(const string &strMap) {
 		return;
 	}
 	map_name_ = jsn["mapname"].asString();
+	bgm_ = jsn["bgm"].asString();
+	Game::Instance()->LoadMusic(bgm_);
 
 	if (jsn.isMember(kstrComSeq) && jsn[kstrComSeq].isArray()) {
 		for (auto &it : jsn[kstrComSeq]) {
@@ -119,12 +121,27 @@ void CommonMap::Load(const string &strMap) {
 	rdata_.y = JSON_VAL(leadrole, "y", Double, 0);
 	rdata_.name = JSON_VAL(leadrole, "name", String, "");
 	rdata_.life = JSON_VAL(leadrole, "life", Int, 0);
+
+	if (jsn.isMember("exdata")) {
+		auto ex = jsn["exdata"];
+		for (auto &it : ex) {
+			ExData exdata;
+			exdata.x = JSON_VAL(it, "x", Double, 0);
+			exdata.y = JSON_VAL(it, "y", Double, 0);
+			exdata.name = JSON_VAL(it, "name", String, "");
+			exdata_.push_back(exdata);
+		}
+	}
 }
 string CommonMap::GetName() {
 	return map_name_;
 }
 
 void CommonMap::CreateOrUpdateActor() {
+	if (!ns_sdl_ast::AssetMgr::Instance()->IsPlayingMus()) {
+		Game::Instance()->PlayMusic(bgm_);
+	}
+
 	if (rdata_.life > 0 && Game::Instance()->Leadrol() == nullptr) {
 		auto actor = ModuleFactory::Instance()->Copy<ModuleInstance>(rdata_.name, layer, Game::Instance()->w_ * rdata_.x,
 									     Game::Instance()->h_ * rdata_.y);
@@ -134,6 +151,18 @@ void CommonMap::CreateOrUpdateActor() {
 			ce_(actor);
 		}
 		rdata_.life--;
+	}
+
+	if (!exdata_.empty()) {
+		for (auto &it : exdata_) {
+			auto x = Game::Instance()->w_ * it.x;
+			auto y = Game::Instance()->h_ * it.y;
+			x = x == 0 ? 1 : x;
+			y = y == 0 ? 1 : y;
+			auto actor = ModuleFactory::Instance()->Copy<ModuleInstance>(it.name, layer, x, y);
+			AddToManage(actor);
+		}
+		exdata_.clear();
 	}
 	auto fn = [](void *mp, void *comb) {
 		auto pThis = (CommonMap *)mp;
@@ -192,5 +221,13 @@ void MapManager::LoadMaps(const string &path) {
 		maps[map->GetName()] = map;
 	}
 }
+
+void MapManager::UnLoadMaps() {
+	for (auto &it : maps) {
+		SAFE_DELETE(it.second);
+	}
+	maps.clear();
+}
+
 
 };

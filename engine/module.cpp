@@ -53,6 +53,7 @@ MTYPE_MAP_END
 
 
 MTYPE_MAP_BEG(string, Actor::CreateBodyFunc, kCreateBody)
+MTYPE_MAP(nullptr)
 MTYPE_MAP(NoCollFunc)
 MTYPE_MAP(CollFunc)
 MTYPE_MAP(CollNoRestiFunc)
@@ -96,9 +97,18 @@ const string kstrMAi = "mai";
 const string kstrWeapon = "weapon";
 const string kstrGoalType = "goaltype";
 const string kstrType = "type";
+const string kstrAnimat = "animat";
+const string kstrScale = "usescale";
+const string kstrMult = "multmod";
+const string kstrW = "w";
+const string kstrH = "h";
+
 void Module::SetParam(const Value &jsn) {
-	auto w = jsn["w"].asInt();
-	auto h = jsn["h"].asInt();
+	auto scale = jsn.isMember(kstrScale) ? jsn[kstrScale].asBool() : false;
+	auto w = scale ? jsn[kstrW].asDouble() * Game::Instance()->w_ : jsn[kstrW].asInt();
+	auto h = scale ? jsn[kstrH].asDouble() * Game::Instance()->h_ : jsn[kstrH].asInt();
+	w = w == 0 ? 1 : w; //带物理实体的不允许为0
+	h = h == 0 ? 1 : h; //带物理实体的不允许为0
 	auto collw = jsn["collw"].asInt();
 	auto collh = jsn["collh"].asInt();
 
@@ -145,12 +155,14 @@ void Module::SetParam(const Value &jsn) {
 	SetCreateBodyFunc(kCreateBody[bodyFunc]);
 	autodie_ = autodie;
 
-	for (auto &ani : jsn["animat"]) {
-		auto stat = ani["state"].asString();
-		auto pic = ani["pic"].asString();
-		auto dt = ani["dt"].asInt();
+	if (jsn.isMember(kstrAnimat)) {
+		for (auto &ani : jsn[kstrAnimat]) {
+			auto stat = ani["state"].asString();
+			auto pic = ani["pic"].asString();
+			auto dt = ani["dt"].asInt();
 
-		AddAssetAnimation(pic, dt, kModDirect[stat]);
+			AddAssetAnimation(pic, dt, kModDirect[stat]);
+		}
 	}
 }
 
@@ -205,6 +217,8 @@ void ModuleFactory::LoadModules(const string &path) {
 	for (auto &it : dir_set) {
 		if (it.find("\\module\\combination\\") != string::npos) {
 			LoadCombination<CombinationInstance>(ReadFile(it));
+		} else if (it.find("\\module\\effect\\") != string::npos) {
+			LoadEffect<EffectInstance>(ReadFile(it));
 		} else if (it.find("\\module\\exai\\") != string::npos) {
 			LoadAi(ReadFile(it));
 		} else if (it.find("\\module\\skill\\") != string::npos) {
@@ -225,11 +239,23 @@ void ModuleFactory::UnLoadModules() {
 		SAFE_DELETE(it.second);
 	}
 	combis.clear();
+
+	for (auto &it : effects) {
+		SAFE_DELETE(it.second);
+	}
+	combis.clear();
 }
 
 void ModuleFactory::AddToLayer(Combination* mod, Layer* layer, const int& x, const int& y) {
 	layer->AddSub(mod);
 	mod->SetPostion(x, y);
+}
+
+void ModuleFactory::AddToLayer(Effect *mod, Layer *layer, const int &x, const int &y,
+	const int &w, const int &h) {
+	layer->AddSub(mod);
+	mod->SetPostion(x, y);
+	mod->SetSize(w, h);
 }
 
 

@@ -10,6 +10,7 @@ include_directories(../engine)
 #要编译64位就链接64位的库
 link_directories(../lib/SDL/x64)
 link_directories(../lib/SDL_IMG/x64)
+link_directories(../lib/SDL_MIX/x64)
 link_directories(../lib/box2d/x64)
 
 link_directories(../lib)
