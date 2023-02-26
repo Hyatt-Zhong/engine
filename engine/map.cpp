@@ -168,8 +168,9 @@ void CommonMap::CreateOrUpdateActor() {
 		auto pThis = (CommonMap *)mp;
 		pThis->AddCombo((Combination *)comb);
 	};
-
+	wait_a_frame_ = false;
 	if (cur_combos_.empty() && !que_.empty()) {
+		wait_a_frame_ = true;
 		auto ele = que_.front();
 		que_.pop();
 		auto qu = ele.first;
@@ -177,8 +178,8 @@ void CommonMap::CreateOrUpdateActor() {
 		while (!qu.empty()) {
 			auto e = qu.front();
 			qu.pop();
-			if (!cur_need_clear) //如果不需要清理，则不用加入到cur_combos_里判断
-			{
+			//如果不需要清理，则不用加入到cur_combos_里判断
+			if (!cur_need_clear) {
 				ModuleFactory::Instance()->SafeAddCombinationToLayer<CombinationInstance>(
 					e.comname, layer, Game::Instance()->w_ * e.x, Game::Instance()->h_ * e.y, this);
 			} else {
@@ -202,7 +203,14 @@ void CommonMap::CreateOrUpdateActor() {
 }
 
 bool CommonMap::IsEnd() {
-	if (cur_combos_.empty() && que_.empty()) {
+	auto hasEnemy = false;
+	for (auto &it : actors) {
+		if (it->type_.test(enemy)) {
+			hasEnemy = true;
+			break;
+		}
+	}
+	if (!hasEnemy && que_.empty() && cur_combos_.empty()&&!wait_a_frame_) {
 		return true;
 	}
 	return false;

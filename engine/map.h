@@ -28,6 +28,7 @@ public:
 	void AddToManage(Actor *actor);
 	void Clear();
 	virtual Map *Copy() = 0;
+	virtual bool IsEnd() { return false; }
 
 protected:
 	Layer *layer = nullptr;
@@ -74,10 +75,12 @@ protected:
 	string bgm_;
 	vector<Combination *> cur_combos_;
 	bool cur_need_clear = false;
-
 	RoleData rdata_;
 
 	vector<ExData> exdata_;
+
+public:
+	bool wait_a_frame_ = false; //等待一帧辅助判断是否为空
 
 private:
 };

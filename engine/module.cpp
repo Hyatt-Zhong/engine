@@ -73,6 +73,7 @@ MTYPE_MAP(AiLookAndMove)
 MTYPE_MAP(AiLine)
 MTYPE_MAP(AiGeneratLine)
 MTYPE_MAP(AiCounterclockwise)
+MTYPE_MAP(AiShotOnce)
 MTYPE_MAP_END
 
 
@@ -84,7 +85,9 @@ MTYPE_MAP_END
 
 MTYPE_MAP_BEG(string, Module::CreateWeapon, kWeaponMap)
 MTYPE_MAP(WPAlpha)
+MTYPE_MAP(WPSlowAlpha)
 MTYPE_MAP(WPFollowBullet)
+MTYPE_MAP(WPShotOnce)
 MTYPE_MAP_END
 
 

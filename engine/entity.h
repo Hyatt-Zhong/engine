@@ -21,7 +21,7 @@ public:
 	void OnCollision(Actor *actor);
 	void UpdateCoefficient();
 	void GetSubGeneratePos(int &x, int &y);
-	void UseWeapon(bool use) { /*use_weapon_ = use;*/ }
+	void UseWeapon(bool use) { use_weapon_ = use; }
 	void Drop();
 	void DeathEffect();
 	bool FindSkill(const string &name);

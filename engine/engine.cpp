@@ -68,14 +68,14 @@ void Scene::ShowLayer(const string &name, bool show, bool monopoly) {
 	auto layer = FindSub(name);
 	layer->SetAlive(show);
 	if (!show) {
-		//layer->Reset();
+		layer->Reset();
 	}
 	if (monopoly) {
 		for (auto &it : sub_) {
 			if (it != layer) {
 				it->SetAlive(!show);
 				if (!show) {
-					//it->Reset();
+					it->Reset();
 				}
 			}
 		}
@@ -103,8 +103,6 @@ void Layer::ForceClear() {
 	RemoveDeath();
 }
 
-
-
 void Layer::Update(const unsigned &dt) {
 	if (map_) {
 		map_->CreateOrUpdateActor();
@@ -115,6 +113,11 @@ void Layer::Update(const unsigned &dt) {
 	Temp<Layer, Actor>::Update(dt);
 
 	RemoveDeath();
+
+}
+
+bool Layer::IsEnd() {
+	return map_->IsEnd();
 }
 
 //void Layer::Reset() {
@@ -125,9 +128,9 @@ void Layer::Update(const unsigned &dt) {
 void Actor::Update(const unsigned &dt) {
 	auto &[x, y] = vel_;
 	x_ += x, y_ += y;
-	Temp<Actor, Actor>::Update(dt);
-	AutoDie();//死亡检测在ai驱动之前，可用死亡检测判断能否操作对象
+	AutoDie(); //死亡检测在ai驱动之前，可用死亡检测判断能否操作对象
 	AiDrive();
+	Temp<Actor, Actor>::Update(dt);
 }
 
 void Actor::AiDrive() {

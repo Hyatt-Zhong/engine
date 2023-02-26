@@ -183,23 +183,10 @@ namespace ns_sdl_winx {
 
 		virtual void Draw(const unsigned& dt) = 0;
 
-		void DrawRect(const int &x, const int &y, const int &w, const int &h, const unsigned& color) {
-			SDL_Rect rt{x, y, w, h};
-			
-			Uint8 red, g, b, a;
-			SDL_GetRenderDrawColor(render_, &red, &g, &b, &a);
-			Uint8 nr = color & 0xff;
-			Uint8 ng = color >> 8 & 0xff;
-			Uint8 nb = color >> 16 & 0xff;
-			Uint8 na = color >> 24 & 0xff;
-
-			SDL_SetRenderDrawColor(render_, nr, ng, nb, na);			
-			SDL_RenderDrawRect(render_, &rt);
-			SDL_SetRenderDrawColor(render_, red, g, b, a);
-		}
+		void DrawRect(const int &x, const int &y, const int &w, const int &h, const unsigned &color);
 
 		void FillRect(const int &x, const int &y, const int &w, const int &h, SDL_Texture *texture);
-
+		void DrawLine(const int &x, const int &y, const int &m, const int &n);
 		void Offset(int& x, int& y, const int& w, const int& h) {
 			x = x + ox_;
 			y = oy_ - y - h;

@@ -53,6 +53,8 @@ protected:
 private:
 };
 
+using Label = Actor;
+
 class Info;
 using notice_func = function<void(void *, Info*)>;
 class Info : public Actor {
@@ -74,7 +76,7 @@ public:
 		float max;
 	};
 	//using Info::Info;//¼Ì³Ð¹¹Ôìº¯Êý
-	Blood(const string &name) : Info(name) { SetAlive(false); }
+	Blood(const string &name) : Info(name) { InitAlive(false); }
 	void Center() { center = true; }
 	void Change(const BloodData &bd);
 	void OnNotice(void *data);
@@ -88,7 +90,7 @@ private:
 
 class SkillInfo : public Actor {
 public:
-	SkillInfo() { SetAlive(false); }
+	SkillInfo() { InitAlive(false); }
 	void OnNotice(void *data);
 
 

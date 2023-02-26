@@ -219,6 +219,18 @@ protected:
 private:
 };
 
+class ShotOnce:public Ai,public Scout
+{
+public:
+	ShotOnce() {}
+	bool Drive(Actor *actor);
+
+protected:
+	bool shot = false;
+
+private:
+};
+
 template<char T> 
 class Patrol : public Line {
 public:
@@ -254,6 +266,7 @@ Ai *AiCounterclockwise();
 Ai *AiGeneratLine();
 Ai *AiCircleRoleOnly();
 Ai *AiMoveAndDie200();
+Ai *AiShotOnce();
 struct LineData {
 	queue<d_vel> que;
 	bool loop;

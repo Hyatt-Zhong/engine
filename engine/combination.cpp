@@ -36,13 +36,17 @@ void Combination::SetParam(const Json::Value &jsn) {
 
 void Combination::UpdateState() {
 	frame();
+	if (frame(40)) {
+		wait_a_frame = false;
+	}
 	if (!g_que_.empty()) {
 		if (frame(30)) {
 			auto name = g_que_.front();
 			g_que_.pop();
 			ModuleFactory::Instance()->SafeAddToLayerByCombination<ModuleInstance>(name, parent_, this, x_, y_);
+			wait_a_frame = true;
 		}
-	} else if (members_.empty()) { //创建都没完成不可能空，所以这里用else if判断combination是否死亡
+	} else if (members_.empty()&&g_que_.empty()&&!wait_a_frame) { //创建都没完成不可能空，所以这里用else if判断combination是否死亡
 		Death();
 	}
 	RemoveMember();
@@ -57,7 +61,7 @@ bool Generator::Drive(Actor *actor) {
 	}
 	auto it = members_.find(actor);
 	if (it == members_.end()) {
-		shared_ptr<Ai> ai(kAiMap[ai_name_]());
+		shared_ptr<Ai> ai(kAiMap.find(ai_name_) != kAiMap.end() ? kAiMap[ai_name_]() : kExAiMap[ai_name_]->Copy());
 		ai->SetMaster(actor);
 		//print(dynamic_cast<ModuleInstance*>(actor)->give_skill_);
 		AddMember(actor, ai);

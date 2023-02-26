@@ -35,8 +35,21 @@ private:
 
 };
 
+class ShotOnce:public Weapon
+{
+public:
+	ShotOnce(const string &bullet);
+	void Use();
+
+protected:
+private:
+	string bullet_;
+};
+
 Weapon *WPAlpha();
+Weapon *WPSlowAlpha();
 Weapon *WPFollowBullet();
+Weapon *WPShotOnce();
 
 };
 #endif

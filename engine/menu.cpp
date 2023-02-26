@@ -77,8 +77,8 @@ void SkillMenu::PushSkill(const string &skill, const string &ico) {
 	skillico->SetName(skill);
 	AddSub(skillico);
 	auto n = sub_.size();
-	skillico->SetPostion(x_ + n * (size + dt), y_);
 	skillico->SetSize(size, size);
+	skillico->SetPostion(x_ + n * (size + dt), y_);
 	skillico->AddAssetAnimation(ico, 0, 0);
 
 	skills_[skill] = skillico;

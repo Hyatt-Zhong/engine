@@ -517,7 +517,7 @@ static float active_distance_ = 0.55; //1个多一点视野内
 		void RemoveDeath();
 		void ForceClear();
 		ns_map::Map* GetMap() { return map_; }
-
+		bool IsEnd();
 		/*void Reset();*/
 
 	public:

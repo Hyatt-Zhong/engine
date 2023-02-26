@@ -206,9 +206,9 @@ bool Circle::SetVel(Actor *actor, d_vel v, float length) {
 
 
 bool Move::Drive(Actor *actor) {
-	if (!frame_with_count(kAiCycle*10)) {
+	/*if (!frame_with_count(kAiCycle*10)) {
 		return false;
-	}
+	}*/
 	auto v = dynamic_cast<ModuleInstance *>(actor)->direct_;
 	SetAngle(actor, v);
 	v *= dynamic_cast<ModuleInstance *>(actor)->velocity_;
@@ -230,7 +230,6 @@ bool Look::Drive(Actor *actor) {
 		auto length = v.Normalize();
 		actor->SetDirect(v);
 		SetAngle(actor, v);
-		actor->SetVel(d_vel(0,0));
 		return true;
 	} else {
 		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(false);
@@ -569,6 +568,10 @@ Ai *AiMoveAndDie200() {
 	return new MoveAndDie;
 }
 
+Ai *AiShotOnce() {
+	return new ShotOnce;
+}
+
 Ai *ExAiCreateLine(const LineData &data) {
 	auto line = new Line;
 	line->SetLine(data.que, data.loop);
@@ -598,6 +601,23 @@ bool MoveAndDie::Drive(Actor *actor) {
 	pos -= orign;
 	if (pos.Length() >= length) {
 		actor->BeKill();
+		return true;
+	}
+	return false;
+}
+
+bool ShotOnce::Drive(Actor *actor) {
+	if (shot) {
+		return true;
+	}
+	shot = true;
+	auto point = Search(range_, actor, actor->goaltype_);
+	if (point) {
+		d_vel v(point->GetCenter().x - actor->GetCenter().x, point->GetCenter().y - actor->GetCenter().y);
+		v.Normalize();
+		actor->SetDirect(v);
+		SetAngle(actor, v);
+		dynamic_cast<ModuleInstance *>(actor)->UseWeapon(true);
 		return true;
 	}
 	return false;

@@ -27,7 +27,7 @@ void Alpha::Use() {
 }
 
 void Alpha::SetBullet(const string &bullet) {
-	bullet_ = bullet_;
+	bullet_ = bullet;
 }
 
 
@@ -36,7 +36,26 @@ Weapon *WPAlpha() {
 	auto wp = new Alpha("bullet");
 	return wp;
 }
+Weapon *WPSlowAlpha() {
+	return new Alpha("slowbullet");
+}
 Weapon *WPFollowBullet() {
 	return new Alpha("FollowBullet");
+}
+ShotOnce::ShotOnce(const string &bullet) {
+	bullet_ = bullet;
+}
+void ShotOnce::Use() {
+	if (master_->parent_) {
+		auto layer = master_->parent_;
+		int x, y;
+		dynamic_cast<ModuleInstance *>(master_)->GetSubGeneratePos(x, y);
+		ModuleFactory::Instance()->SafeAddToLayer<ModuleInstance>(bullet_, (Layer *)layer, master_, x, y, "");
+		dynamic_cast<ModuleInstance *>(master_)->UseWeapon(false);
+	}
+}
+
+Weapon *WPShotOnce() {
+	return new ShotOnce("slowbullet");
 }
 };

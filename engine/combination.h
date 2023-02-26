@@ -21,9 +21,11 @@ public:
 	virtual void Init() {}
 	virtual void SetParam(const Json::Value &jsn);
 
+	const string &AiName() { return ai_name_; }
 protected:
 	string ai_name_;
 	queue<string> g_que_;
+	bool wait_a_frame = false;
 
 private:
 };

@@ -16,8 +16,8 @@ using namespace ns_entity;
 
 void AddButton(Layer &layer, Actor &actor, int x, int y, int w, int h, bool center = false) {
 	layer.AddSub(&actor);
-	actor.SetPostion(x, y);
 	actor.SetSize(w, h);
+	actor.SetPostion(x, y);
 }
 
 
@@ -102,18 +102,47 @@ void main() {
 	mn_start.SetPostion(0, 0, false);
 	mn_start.SetSize(width, height);
 
-	EventButton ac_start([mapset]() {
+	/*EventButton ac_start([mapset]() {
+		Game::Instance()->SwitchScene("play");
+		auto lv1 = MapManager::Instance()->CopyMap("lv1");
+		mapset(lv1);
+		auto ly_play = Game::Instance()->GetLayer("play");
+		ly_play->SetMap(lv1);
+	});*/
+	EventButton ac_end([wx]() { wx->ShutDown(); });
+	//AddButton(mn_start, ac_start, 200, 200, 100, 50);
+	AddButton(mn_start, ac_end, 200, 100, 100, 50);
+	//ac_start.AddAssetAnimation("start.png", 0, 0);
+	ac_end.AddAssetAnimation("end.png", 0, 0);
+
+	EventButton ac_lv1([mapset]() {
 		Game::Instance()->SwitchScene("play");
 		auto lv1 = MapManager::Instance()->CopyMap("lv1");
 		mapset(lv1);
 		auto ly_play = Game::Instance()->GetLayer("play");
 		ly_play->SetMap(lv1);
 	});
-	EventButton ac_end([wx]() { wx->ShutDown(); });
-	AddButton(mn_start, ac_start, 200, 200, 100, 50);
-	AddButton(mn_start, ac_end, 200, 100, 100, 50);
-	ac_start.AddAssetAnimation("start.png", 0, 0);
-	ac_end.AddAssetAnimation("end.png", 0, 0);
+	EventButton ac_lv2([mapset]() {
+		Game::Instance()->SwitchScene("play");
+		auto lv2 = MapManager::Instance()->CopyMap("lv2");
+		mapset(lv2);
+		auto ly_play = Game::Instance()->GetLayer("play");
+		ly_play->SetMap(lv2);
+	});
+	EventButton ac_lv3([mapset]() {
+		Game::Instance()->SwitchScene("play");
+		auto lv3 = MapManager::Instance()->CopyMap("lv3");
+		mapset(lv3);
+		auto ly_play = Game::Instance()->GetLayer("play");
+		ly_play->SetMap(lv3);
+	});
+
+	AddButton(mn_start, ac_lv1, 200, 400, 200, 200);
+	ac_lv1.AddAssetAnimation("lv1.png", 0, 0);
+	AddButton(mn_start, ac_lv2, 500, 400, 200, 200);
+	ac_lv2.AddAssetAnimation("lv2.png", 0, 0);
+	AddButton(mn_start, ac_lv3, 800, 400, 200, 200);
+	ac_lv3.AddAssetAnimation("lv3.png", 0, 0);
 
 	Scene sc_play("play");
 	Layer ly_play("play");
@@ -143,8 +172,8 @@ void main() {
 		SAFE_DELETE(map);
 		Game::Instance()->SwitchScene("start");
 	});
-	AddButton(mn_pause, ac_continue, 200, 200, 100, 50);
-	AddButton(mn_pause, ac_gomain, 200, 100, 100, 50);
+	AddButton(mn_pause, ac_continue, 200, 200, 150, 50);
+	AddButton(mn_pause, ac_gomain, 200, 100, 150, 50);
 	ac_continue.AddAssetAnimation("continue.png", 0, 0);
 	ac_gomain.AddAssetAnimation("main-menu.png", 0, 0);
 	mn_pause.InitAlive(false);
@@ -195,6 +224,49 @@ void main() {
 		if (up_or_down == SDL_KEYUP) {
 		}
 	});
+
+	Layer ly_settlement("settlement");
+	sc_play.AddSub(&ly_settlement);
+	ly_settlement.SetPostion(0, 0, false);
+	ly_settlement.SetSize(width, height);
+	ly_settlement.InitAlive(false);
+
+	ly_play.AddFrameEvent([](void *self) {
+		auto ly = (Layer *)self;
+		if (ly->IsEnd()) {
+			auto sc = ly->parent_;
+			if (sc->IsAlive()) {
+				sc->ShowLayer("settlement", true, false);
+			}
+		}
+	});
+
+	EventButton ac_settlement([]() {
+		auto ly_play = Game::Instance()->GetLayer("play");
+		auto map = ly_play->GetMap();
+		ly_play->ForceClear();
+		map->Clear();
+		SAFE_DELETE(map);
+		Game::Instance()->SwitchScene("start");
+	});
+	AddButton(ly_settlement, ac_settlement, 200, 100, 150, 50);
+	ac_settlement.AddAssetAnimation("main-menu.png", 0, 0);
+
+	Label lb;
+	AddButton(ly_settlement, lb, width/2, height/2, 250, 150);
+	lb.AddAssetAnimation("win.png", 0, 0);
+
+	/*mn_start.AddFrameEvent([=](void *self) {
+		if (ns_sdl_winx::EventHandle::Instance()->GetMouseState(1)) {
+			wx->DrawLine(0, 0, 300, 300);
+		}
+	});*/
+
+	/*Label elc1;
+	AddButton(mn_start, lb, width / 2, height / 2, 10, 200);
+	lb.AddAssetAnimation("elc1.png", 15, 0);
+	lb.AddAssetAnimation("elc2.png", 15, 0);
+	lb.AddAssetAnimation("elc3.png", 15, 0);*/
 
 	wx->Run();
 
